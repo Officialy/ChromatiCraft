@@ -25,6 +25,9 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelRelaySource;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
+import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 import reika.chromaticraft.tileentity.networking.TileEntityRelaySource;
 
 import java.util.ArrayList;
@@ -39,7 +42,7 @@ public final class RenderRelaySource
 	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "textures/entity/relay_source.png");
 	private static final Identifier CRYSTAL = Identifier.fromNamespaceAndPath(
-			ChromatiCraft.MODID, "block/crystal/crystal");
+			ChromatiCraft.MODID, "block/crystal/crystal_outline");
 	private static final Identifier CAUSTICS = Identifier.fromNamespaceAndPath(
 			ChromatiCraft.MODID, "block/icons/caustics-g");
 
@@ -55,23 +58,25 @@ public final class RenderRelaySource
 	public void extractRenderState(TileEntityRelaySource source, State state, float partialTick,
 			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
 		BlockEntityRenderer.super.extractRenderState(source, state, partialTick, cameraPosition, breakProgress);
+		state.effects = source.hasLevel() || StructureRenderer.isRenderingTiles();
 		state.enhanced = source.isEnhanced();
 		state.time = source.getTicksExisted() + partialTick;
 		state.edgeColor = 0xff000000 | CrystalElement.getBlendedColor(source.getTicksExisted(), 50);
-		state.crystals.clear();
+		var crystals = new ArrayList<Crystal>();
 		int capacity = source.getRenderedCrystalCapacity();
 		if (capacity > 0) for (CrystalElement element : CrystalElement.elements) {
 			float fraction = source.getRenderedCrystalEnergy(element) / (float)capacity;
-			if (fraction > 0) state.crystals.add(new Crystal(element.color(), fraction));
+			if (fraction > 0) crystals.add(new Crystal(element.color(), fraction));
 		}
+        state.crystals = List.copyOf(crystals);
 	}
 
 	@Override
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
 			CameraRenderState camera) {
 		submitModel(state, poseStack, collector, model, state.lightCoords);
-		if (!state.crystals.isEmpty()) submitCrystals(state, poseStack, collector);
-		if (state.enhanced) submitEnhancedArea(poseStack, collector);
+		if (state.effects && !state.crystals.isEmpty()) submitCrystals(state, poseStack, collector);
+		if (state.effects && state.enhanced) submitEnhancedArea(poseStack, collector);
 	}
 
 	public static void submitModel(State state, PoseStack poseStack, SubmitNodeCollector collector,
@@ -90,7 +95,7 @@ public final class RenderRelaySource
 		collector.submitCustomGeometry(bodyPose, RenderTypes.entityCutout(TEXTURE),
 				(unused, out) -> model.renderBody(bodyPose, out, light, OverlayTexture.NO_OVERLAY));
 		PoseStack edgePose = copy(poseStack);
-		collector.submitCustomGeometry(edgePose, ChromaRenderPipelines.legacyAdditiveSprite(TEXTURE),
+		collector.submitCustomGeometry(edgePose, ChromaRenderPipelines.SOURCE_EDGES_TYPE,
 				(unused, out) -> model.renderEdges(edgePose, out, LightCoordsUtil.FULL_BRIGHT,
 						OverlayTexture.NO_OVERLAY, edgeColor));
 	}
@@ -98,74 +103,130 @@ public final class RenderRelaySource
 	private static void submitCrystals(State state, PoseStack poseStack, SubmitNodeCollector collector) {
 		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
 				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(CRYSTAL);
+        float u0=sprite.getU0(),u1=sprite.getU1(),v0=sprite.getV0(),v1=sprite.getV1();
 		int count = state.crystals.size();
+        double angle=state.time%360;
+        int spacing=360/count; // Original Java integer division, including 7/16-element rings.
 		for (int i = 0; i < count; i++) {
 			Crystal crystal = state.crystals.get(i);
 			PoseStack draw = copy(poseStack);
 			draw.translate(0.5, 0.5, 0.5);
-			draw.rotate(Axis.YP.rotationDegrees((float)(state.time + i * 360D / count)));
+			draw.rotate(Axis.YP.rotationDegrees((float)(angle + i * spacing)));
 			draw.translate(0, 0.1 * Math.sin(state.time / 8D + i), 0);
 			draw.translate(0.5, 0.5, 0.5);
-			draw.rotate(Axis.YP.rotationDegrees(state.time * 4));
-			collector.submitCustomGeometry(draw,
-					ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
-					(unused, out) -> crystal(out, draw.last(), sprite, crystal));
+			draw.rotate(Axis.YP.rotationDegrees((float)(angle * 4)));
+            draw.translate(-.5,-.5,-.5);
+            ScreenParticleRendering.submitGeometry(collector,draw,
+                    EntityLighting.FULL_BRIGHT.screen(TextureAtlas.LOCATION_BLOCKS,true,true),
+                    (captured,out)->crystal(out,captured,u0,u1,v0,v1,crystal));
 		}
 	}
 
-	private static void crystal(VertexConsumer out, PoseStack.Pose pose, TextureAtlasSprite sprite,
-			Crystal crystal) {
-		float w = 0.175F / 4;
-		float h = 0.2875F / 2 * crystal.fraction;
-		float tip = 0.1875F / 2;
-		int color = 0xff000000 | crystal.color;
-		float u0 = sprite.getU0(), u1 = sprite.getU1(), v0 = sprite.getV0(), v1 = sprite.getV1();
-		quad(out, pose, -w,-h,-w, -w,h,-w, w,h,-w, w,-h,-w, u0,u1,v0,v1,color);
-		quad(out, pose, w,-h,w, w,h,w, -w,h,w, -w,-h,w, u0,u1,v0,v1,color);
-		quad(out, pose, w,-h,-w, w,h,-w, w,h,w, w,-h,w, u0,u1,v0,v1,color);
-		quad(out, pose, -w,-h,w, -w,h,w, -w,h,-w, -w,-h,-w, u0,u1,v0,v1,color);
-		triangleQuad(out, pose, 0,h+tip,0, w,h,w, w,h,-w, color, u0,u1,v0,v1);
-		triangleQuad(out, pose, 0,h+tip,0, -w,h,-w, -w,h,w, color, u0,u1,v0,v1);
-		triangleQuad(out, pose, 0,-h-tip,0, w,-h,-w, w,-h,w, color, u0,u1,v0,v1);
-		triangleQuad(out, pose, 0,-h-tip,0, -w,-h,w, -w,-h,-w, color, u0,u1,v0,v1);
-	}
+    private static void crystal(VertexConsumer out,PoseStack.Pose pose,float u,float du,float v,float dv,Crystal crystal) {
+        float w=.175F/4,h=.2875F/2*crystal.fraction,h2=.1875F/2;
+        int color=0xff000000|crystal.color;
+        vertex(out,pose,0.5F-w,0.5F-h,0.5F-w,u,v,color);
+        vertex(out,pose,0.5F-w,0.5F+h,0.5F-w,du,v,color);
+        vertex(out,pose,0.5F+w,0.5F+h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F+w,0.5F-h,0.5F-w,u,dv,color);
+        vertex(out,pose,0.5F+w,0.5F-h,0.5F+w,u,dv,color);
+        vertex(out,pose,0.5F+w,0.5F+h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F-w,0.5F+h,0.5F+w,du,v,color);
+        vertex(out,pose,0.5F-w,0.5F-h,0.5F+w,u,v,color);
+        vertex(out,pose,0.5F+w,0.5F-h,0.5F-w,u,v,color);
+        vertex(out,pose,0.5F+w,0.5F+h,0.5F-w,du,v,color);
+        vertex(out,pose,0.5F+w,0.5F+h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F+w,0.5F-h,0.5F+w,u,dv,color);
+        vertex(out,pose,0.5F-w,0.5F-h,0.5F+w,u,dv,color);
+        vertex(out,pose,0.5F-w,0.5F+h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F-w,0.5F+h,0.5F-w,du,v,color);
+        vertex(out,pose,0.5F-w,0.5F-h,0.5F-w,u,v,color);
+        vertex(out,pose,0.5F,0.5F+h+h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F+w,0.5F+h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F+w,0.5F+h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F,0.5F+h+h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F,0.5F+h+h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F+w,0.5F+h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F-w,0.5F+h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F,0.5F+h+h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F,0.5F+h+h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F-w,0.5F+h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F-w,0.5F+h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F,0.5F+h+h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F,0.5F+h+h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F-w,0.5F+h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F+w,0.5F+h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F,0.5F+h+h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F,0.5F-h-h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F-w,0.5F-h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F-w,0.5F-h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F,0.5F-h-h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F,0.5F-h-h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F-w,0.5F-h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F+w,0.5F-h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F,0.5F-h-h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F,0.5F-h-h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F+w,0.5F-h,0.5F-w,du,dv,color);
+        vertex(out,pose,0.5F+w,0.5F-h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F,0.5F-h-h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F,0.5F-h-h2,0.5F,u,dv,color);
+        vertex(out,pose,0.5F+w,0.5F-h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F-w,0.5F-h,0.5F+w,du,dv,color);
+        vertex(out,pose,0.5F,0.5F-h-h2,0.5F,u,dv,color);
+    }
 
 	private static void submitEnhancedArea(PoseStack poseStack, SubmitNodeCollector collector) {
 		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
 				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(CAUSTICS);
-		PoseStack draw = copy(poseStack);
-		collector.submitCustomGeometry(draw,
-				ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
-				(unused, out) -> enhancedArea(out, draw.last(), sprite));
+        float u=sprite.getU0(),du=sprite.getU1(),v=sprite.getV0(),dv=sprite.getV1();
+        ScreenParticleRendering.submitGeometry(collector,poseStack,
+                EntityLighting.FULL_BRIGHT.screen(TextureAtlas.LOCATION_BLOCKS,true),
+                (captured,out)->enhancedArea(out,captured,u,du,v,dv));
 	}
 
-	private static void enhancedArea(VertexConsumer out, PoseStack.Pose pose, TextureAtlasSprite s) {
-		float u0=s.getU0(), u1=s.getU1(), v0=s.getV0(), v1=s.getV1(); int c=0xffffffff;
-		quad(out,pose,-1.5F,0,2.5F,2.5F,0,2.5F,1,1.25F,1,0,1.25F,1,u0,u1,v0,v1,c);
-		quad(out,pose,0,1.25F,0,1,1.25F,0,2.5F,0,-1.5F,-1.5F,0,-1.5F,u0,u1,v0,v1,c);
-		quad(out,pose,1,1.25F,0,1,1.25F,1,2.5F,0,2.5F,2.5F,0,-1.5F,u0,u1,v0,v1,c);
-		quad(out,pose,-1.5F,0,-1.5F,-1.5F,0,2.5F,0,1.25F,1,0,1.25F,0,u0,u1,v0,v1,c);
-		quad(out,pose,0,1.25F,1,1,1.25F,1,1,1.25F,0,0,1.25F,0,u0,u1,v0,v1,c);
-		quad(out,pose,-2,-1,2.5F,3,-1,2.5F,3,0,2.5F,-2,0,2.5F,u0,u1,v0,v1,c);
-		quad(out,pose,-2,0,-1.5F,3,0,-1.5F,3,-1,-1.5F,-2,-1,-1.5F,u0,u1,v0,v1,c);
-		quad(out,pose,-1.5F,-1,-2,-1.5F,-1,3,-1.5F,0,3,-1.5F,0,-2,u0,u1,v0,v1,c);
-		quad(out,pose,2.5F,0,-2,2.5F,0,3,2.5F,-1,3,2.5F,-1,-2,u0,u1,v0,v1,c);
-	}
-
-	private static void triangleQuad(VertexConsumer out, PoseStack.Pose pose,
-			float ax,float ay,float az,float bx,float by,float bz,float cx,float cy,float cz,
-			int color,float u0,float u1,float v0,float v1) {
-		quad(out,pose,ax,ay,az,bx,by,bz,cx,cy,cz,ax,ay,az,u0,u1,v0,v1,color);
-	}
-
-	private static void quad(VertexConsumer out, PoseStack.Pose pose,
-			float x1,float y1,float z1,float x2,float y2,float z2,float x3,float y3,float z3,
-			float x4,float y4,float z4,float u0,float u1,float v0,float v1,int color) {
-		out.addVertex(pose,x1,y1,z1).setUv(u0,v1).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		out.addVertex(pose,x2,y2,z2).setUv(u0,v0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		out.addVertex(pose,x3,y3,z3).setUv(u1,v0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		out.addVertex(pose,x4,y4,z4).setUv(u1,v1).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-	}
+    private static void enhancedArea(VertexConsumer out,PoseStack.Pose pose,float u,float du,float v,float dv) {
+        float h=1.25F,o=2;
+        vertex(out,pose,0.5F-o,0,o+0.5F,u,v,0xffffffff);
+        vertex(out,pose,0.5F+o,0,o+0.5F,du,v,0xffffffff);
+        vertex(out,pose,1,h,1,du,dv,0xffffffff);
+        vertex(out,pose,0,h,1,u,dv,0xffffffff);
+        vertex(out,pose,0,h,0,u,dv,0xffffffff);
+        vertex(out,pose,1,h,0,du,dv,0xffffffff);
+        vertex(out,pose,0.5F+o,0,-o+0.5F,du,v,0xffffffff);
+        vertex(out,pose,0.5F-o,0,-o+0.5F,u,v,0xffffffff);
+        vertex(out,pose,1,h,0,u,dv,0xffffffff);
+        vertex(out,pose,1,h,1,du,dv,0xffffffff);
+        vertex(out,pose,o+0.5F,0,0.5F+o,du,v,0xffffffff);
+        vertex(out,pose,o+0.5F,0,0.5F-o,u,v,0xffffffff);
+        vertex(out,pose,-o+0.5F,0,0.5F-o,u,v,0xffffffff);
+        vertex(out,pose,-o+0.5F,0,0.5F+o,du,v,0xffffffff);
+        vertex(out,pose,0,h,1,du,dv,0xffffffff);
+        vertex(out,pose,0,h,0,u,dv,0xffffffff);
+        vertex(out,pose,0,h,1,u,dv,0xffffffff);
+        vertex(out,pose,1,h,1,du,dv,0xffffffff);
+        vertex(out,pose,1,h,0,du,v,0xffffffff);
+        vertex(out,pose,0,h,0,u,v,0xffffffff);
+        vertex(out,pose,0.5F-o-0.5F,-1,o+0.5F,u,dv,0xffffffff);
+        vertex(out,pose,0.5F+o+0.5F,-1,o+0.5F,du,dv,0xffffffff);
+        vertex(out,pose,0.5F+o+0.5F,0,o+0.5F,du,v,0xffffffff);
+        vertex(out,pose,0.5F-o-0.5F,0,o+0.5F,u,v,0xffffffff);
+        vertex(out,pose,0.5F-o-0.5F,0,-o+0.5F,u,v,0xffffffff);
+        vertex(out,pose,0.5F+o+0.5F,0,-o+0.5F,du,v,0xffffffff);
+        vertex(out,pose,0.5F+o+0.5F,-1,-o+0.5F,du,dv,0xffffffff);
+        vertex(out,pose,0.5F-o-0.5F,-1,-o+0.5F,u,dv,0xffffffff);
+        vertex(out,pose,-o+0.5F,-1,0.5F-o-0.5F,u,dv,0xffffffff);
+        vertex(out,pose,-o+0.5F,-1,0.5F+o+0.5F,du,dv,0xffffffff);
+        vertex(out,pose,-o+0.5F,0,0.5F+o+0.5F,du,v,0xffffffff);
+        vertex(out,pose,-o+0.5F,0,0.5F-o-0.5F,u,v,0xffffffff);
+        vertex(out,pose,o+0.5F,0,0.5F-o-0.5F,u,v,0xffffffff);
+        vertex(out,pose,o+0.5F,0,0.5F+o+0.5F,du,v,0xffffffff);
+        vertex(out,pose,o+0.5F,-1,0.5F+o+0.5F,du,dv,0xffffffff);
+        vertex(out,pose,o+0.5F,-1,0.5F-o-0.5F,u,dv,0xffffffff);
+    }
+    private static void vertex(VertexConsumer out,PoseStack.Pose pose,float x,float y,float z,float u,float v,int color) {
+        out.addVertex(pose,x,y,z).setUv(u,v).setColor(color).setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose,0,1,0);
+    }
 
 	private static PoseStack copy(PoseStack source) {
 		PoseStack copy = new PoseStack(); copy.last().set(source.last()); return copy;
@@ -179,9 +240,9 @@ public final class RenderRelaySource
 
 	private record Crystal(int color, float fraction) {}
 	public static final class State extends BlockEntityRenderState {
-		private boolean enhanced;
+		private boolean enhanced, effects;
 		private float time;
 		private int edgeColor = 0xffffffff;
-		private final List<Crystal> crystals = new ArrayList<>();
+		private List<Crystal> crystals = List.of();
 	}
 }

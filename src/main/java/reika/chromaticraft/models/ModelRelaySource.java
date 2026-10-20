@@ -12,20 +12,23 @@ import net.minecraft.client.model.geom.builders.PartDefinition;
 
 /** Exact 128x128 Techne cuboids, UVs, pivots and rotations from V33a ModelRelaySource. */
 public final class ModelRelaySource {
-	private final ModelPart body;
-	private final ModelPart edges;
+	private final java.util.List<ModelPart> body;
+	private final java.util.List<ModelPart> edges;
 
 	public ModelRelaySource(ModelPart root) {
-		body = root.getChild("body");
-		edges = root.getChild("edges");
+        var b=root.getChild("body");var e=root.getChild("edges");
+        body=java.util.List.of(b.getChild("center_e"),b.getChild("rim_e"),b.getChild("rim_s"),b.getChild("rim_w"),
+                b.getChild("rim_n"),b.getChild("inner_n"),b.getChild("inner_s"),b.getChild("center_w"),
+                b.getChild("bar_n"),b.getChild("bar_s"),b.getChild("base"));
+        edges=java.util.List.of(e.getChild("edge_low"),e.getChild("edge_high"),e.getChild("edge_mid"));
 	}
 
 	public void renderBody(PoseStack pose, VertexConsumer out, int light, int overlay) {
-		body.render(pose, out, light, overlay);
+		for(var part:body)part.render(pose, out, light, overlay);
 	}
 
 	public void renderEdges(PoseStack pose, VertexConsumer out, int light, int overlay, int color) {
-		edges.render(pose, out, light, overlay, color);
+		for(var part:edges)part.render(pose, out, light, overlay, color);
 	}
 
 	public static LayerDefinition createBodyLayer() {
@@ -55,7 +58,7 @@ public final class ModelRelaySource {
 	private static void part(PartDefinition parent, String name, int u, int v,
 			float x, float y, float z, float dx, float dy, float dz,
 			float px, float py, float pz, float xDeg, float yDeg, float zDeg) {
-		parent.addOrReplaceChild(name, CubeListBuilder.create().texOffs(u, v).mirror()
+		parent.addOrReplaceChild(name, CubeListBuilder.create().texOffs(u, v)
 				.addBox(x, y, z, dx, dy, dz), PartPose.offsetAndRotation(px, py, pz,
 					(float)Math.toRadians(xDeg), (float)Math.toRadians(yDeg),
 					(float)Math.toRadians(zDeg)));

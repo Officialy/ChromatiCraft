@@ -58,6 +58,18 @@ public final class ChromaRenderPipelines {
 			BlendFactor.ONE, BlendFactor.ONE_MINUS_SRC_ALPHA);
 
     /** Untextured V33a ADDITIVEDARK geometry: RGB screen blending on composed scene color. */
+    /** V33a prepareGeoDraw(false): untextured, unlit, opaque model geometry with depth writes. */
+    public static final RenderPipeline SOURCE_EDGES = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/source_edges"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS).withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+            .withVertexShader("core/position_color").withFragmentShader("core/position_color")
+            .withColorTargetState(ColorTargetState.DEFAULT).withDepthStencilState(DepthStencilState.DEFAULT)
+            .withVertexBinding(0,DefaultVertexFormat.POSITION_COLOR).withPrimitiveTopology(PrimitiveTopology.QUADS)
+            .withCull(true).build();
+    public static final RenderType SOURCE_EDGES_TYPE=RenderType.create("chromaticraft_source_edges",
+            RenderSetup.builder(SOURCE_EDGES).createRenderSetup());
+
     public static final RenderPipeline ADDITIVE_COLOR = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/additive_color"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -673,6 +685,9 @@ public final class ChromaRenderPipelines {
 
     private static void registerPipelines(RegisterRenderPipelinesEvent event) {
         event.registerPipeline(ADDITIVE_SPRITE);
+        event.registerPipeline(SOURCE_EDGES);
+        IrisCompat.assign(SOURCE_EDGES,"ENTITIES");
+        IrisCompat.assignShadow(SOURCE_EDGES,"SHADOW_ENTITIES");
         event.registerPipeline(ADDITIVE_COLOR);
         event.registerPipeline(ADDITIVE_LINES);
         IrisCompat.assignWithoutShadow(ADDITIVE_COLOR,"BASIC");

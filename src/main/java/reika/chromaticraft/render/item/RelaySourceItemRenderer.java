@@ -29,7 +29,7 @@ public final class RelaySourceItemRenderer implements NoDataSpecialModelRenderer
 		poseStack.scale(0.88F, -0.88F, -0.88F);
 		poseStack.rotate(Axis.YP.rotationDegrees(180));
 		poseStack.translate(0, -1.5F, 0);
-		RenderRelaySource.submitItemModel(poseStack, collector, model, lightCoords, 0xffffffff);
+		RenderRelaySource.submitItemModel(poseStack, collector, model, lightCoords, 0xff000000 | reika.chromaticraft.registry.CrystalElement.getBlendedColor(0, 50));
 		poseStack.popPose();
 	}
 
