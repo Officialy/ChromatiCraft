@@ -28,6 +28,9 @@ import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelLumenWire;
 import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
+import org.joml.Quaternionf;
 import reika.chromaticraft.tileentity.TileEntityLumenWire;
 import reika.dragonapi.instantiable.rendering.FXCollection;
 
@@ -58,7 +61,8 @@ public final class RenderLumenWire implements BlockEntityRenderer<TileEntityLume
 			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
 		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
 		state.facing = te.getFacing();
-		state.particles = te.particles;
+		state.inWorld = te.hasLevel();
+		state.particles = te.particles == null ? FXCollection.Snapshot.EMPTY : te.particles.snapshot();
 	}
 
 	@Override
@@ -69,6 +73,10 @@ public final class RenderLumenWire implements BlockEntityRenderer<TileEntityLume
 		int dx = 0;
 		int dz = 0;
 		int dy = 1;
+        if (!state.inWorld) {
+            poseStack.scale(2.5F,2.5F,2.5F);
+            poseStack.translate(0,.3125F,0);
+        } else {
 		switch(state.facing.getOpposite()) {
 			case EAST -> {
 				rot = 270;
@@ -98,13 +106,15 @@ public final class RenderLumenWire implements BlockEntityRenderer<TileEntityLume
 		poseStack.rotate(Axis.YP.rotationDegrees(rot));
 		poseStack.rotate(Axis.XP.rotationDegrees(90));
 		poseStack.rotate(Axis.XP.rotationDegrees(rotx));
+        }
 		submitModel(model, poseStack, collector, state.lightCoords);
 		poseStack.popPose();
 
-		FXCollection particles = state.particles;
-		if (particles != null && !particles.isEmpty()) {
-			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
-					(pose, v5) -> particles.render(v5, pose, camera.orientation));
+		FXCollection.Snapshot particles = state.particles;
+		if (state.inWorld && !particles.isEmpty()) {
+            var orientation = new Quaternionf(camera.orientation);
+			ScreenParticleRendering.submitGeometry(collector, poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+					(pose, v5) -> particles.render(v5, pose, orientation));
 		}
 	}
 
@@ -116,13 +126,23 @@ public final class RenderLumenWire implements BlockEntityRenderer<TileEntityLume
 		PoseStack modelPose = new PoseStack();
 		modelPose.last().set(poseStack.last());
 		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE), (unused, vertices) ->
-				model.render(modelPose, vertices, light, OverlayTexture.NO_OVERLAY));
+				model.renderBody(modelPose, vertices, light, OverlayTexture.NO_OVERLAY));
+        collector.submitCustomGeometry(poseStack,EntityLighting.FULL_BRIGHT.cutout(TEXTURE,true),(captured,vertices)->{
+            var corePose=new PoseStack();corePose.last().set(captured);
+            model.renderCore(corePose,vertices,OverlayTexture.NO_OVERLAY);
+        });
 		poseStack.popPose();
 	}
 
+    @Override
+    public net.minecraft.world.phys.AABB getRenderBoundingBox(TileEntityLumenWire tile) {
+        return tile.getRenderBoundingBox();
+    }
+
 	public static final class State extends BlockEntityRenderState {
+		private boolean inWorld;
 		private Direction facing = Direction.UP;
-		private FXCollection particles;
+		private FXCollection.Snapshot particles = FXCollection.Snapshot.EMPTY;
 	}
 
 }

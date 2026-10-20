@@ -24,20 +24,24 @@ import net.minecraft.client.model.geom.builders.PartDefinition;
  */
 public final class ModelLumenWire {
 
-	private final ModelPart root;
+	private final java.util.List<ModelPart> body;
 	private final ModelPart core;
 
 	public ModelLumenWire(ModelPart root) {
-		this.root = root;
+		body = java.util.List.of("shape1","shape3a","shape3","shape3b","shape3c","shape4","shape4a","shape4b","shape4c").stream().map(root::getChild).toList();
 		core = root.getChild("shape2");
 	}
 
 	public void render(PoseStack pose, VertexConsumer vertices, int light, int overlay) {
-		core.visible = false;
-		root.render(pose, vertices, light, overlay);
-		core.visible = true;
-		core.render(pose, vertices, 0xF000F0, overlay);
-	}
+        renderBody(pose,vertices,light,overlay);
+        renderCore(pose,vertices,overlay);
+    }
+    public void renderBody(PoseStack pose,VertexConsumer vertices,int light,int overlay) {
+        for(var part:body) part.render(pose,vertices,light,overlay);
+    }
+    public void renderCore(PoseStack pose,VertexConsumer vertices,int overlay) {
+        core.render(pose,vertices,net.minecraft.util.LightCoordsUtil.FULL_BRIGHT,overlay);
+    }
 
 	public static LayerDefinition createBodyLayer() {
 		MeshDefinition mesh = new MeshDefinition();
@@ -59,7 +63,7 @@ public final class ModelLumenWire {
 	private static void part(PartDefinition parent, String name, int u, int v,
 			float x, float y, float z, float dx, float dy, float dz,
 			float px, float py, float pz, float xRad, float yRad, float zRad) {
-		parent.addOrReplaceChild(name, CubeListBuilder.create().texOffs(u, v).mirror()
+		parent.addOrReplaceChild(name, CubeListBuilder.create().texOffs(u, v)
 				.addBox(x, y, z, dx, dy, dz),
 				PartPose.offsetAndRotation(px, py, pz, xRad, yRad, zRad));
 	}
