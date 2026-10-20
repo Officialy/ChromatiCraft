@@ -51,7 +51,7 @@ public final class ModelTurret {
 	private static void part(PartDefinition parent, String name, int u, int v,
 			float x, float y, float z, float dx, float dy, float dz,
 			float px, float py, float pz, float xRad, float yRad, float zRad) {
-		parent.addOrReplaceChild(name, CubeListBuilder.create().texOffs(u, v).mirror()
+		parent.addOrReplaceChild(name, CubeListBuilder.create().texOffs(u, v)
 				.addBox(x, y, z, dx, dy, dz),
 				PartPose.offsetAndRotation(px, py, pz, xRad, yRad, zRad));
 	}

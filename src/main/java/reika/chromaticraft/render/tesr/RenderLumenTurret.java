@@ -27,6 +27,9 @@ import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 
 import reika.chromaticraft.ChromatiCraft;
+import reika.dragonapi.client.ScreenParticleRendering;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import reika.chromaticraft.models.ModelTurret;
 import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.render.ChromaRenderPipelines;
@@ -55,8 +58,22 @@ public final class RenderLumenTurret implements BlockEntityRenderer<TileEntityLu
 	}
 
 	@Override
+    public void extractRenderState(TileEntityLumenTurret tile, State state, float partialTick, Vec3 cameraPosition,
+            ModelFeatureRenderer.CrumblingOverlay breaking) {
+        BlockEntityRenderer.super.extractRenderState(tile,state,partialTick,cameraPosition,breaking);
+        state.inWorld=tile.hasLevel();
+    }
+
+	@Override
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+        poseStack.pushPose();
+        if(!state.inWorld) {
+            poseStack.scale(1.75F,1.75F,1.75F);
+            poseStack.translate(0,.1875F,0);
+        }
 		submitModel(model, poseStack, collector, state.lightCoords);
+        poseStack.popPose();
+        if(!state.inWorld)return;
 
 		poseStack.pushPose();
 		poseStack.translate(0.5F, 0.625F, 0.5F);
@@ -69,7 +86,7 @@ public final class RenderLumenTurret implements BlockEntityRenderer<TileEntityLu
 		for (int i = 0; i < icons.length; i++) {
 			TextureAtlasSprite ico = atlas.getSprite(icons[i].getIcon());
 			float s = 0.125F-0.03125F*i;
-			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+			ScreenParticleRendering.submitGeometry(collector, poseStack, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
 					(pose, v5) -> quad(pose, v5, ico, s));
 		}
 		poseStack.popPose();
@@ -95,6 +112,7 @@ public final class RenderLumenTurret implements BlockEntityRenderer<TileEntityLu
 	}
 
 	public static final class State extends BlockEntityRenderState {
+        private boolean inWorld;
 	}
 
 }
