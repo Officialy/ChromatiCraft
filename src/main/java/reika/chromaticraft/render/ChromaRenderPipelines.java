@@ -81,6 +81,33 @@ public final class ChromaRenderPipelines {
             .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,false)).withCull(false).build();
     public static final RenderType ADDITIVE_COLOR_TYPE=RenderType.create("chromaticraft_additive_color",
             RenderSetup.builder(ADDITIVE_COLOR).createRenderSetup());
+    /** Source Adjacency rings disable texture/directional lighting but retain the lightmap. */
+    public static final com.mojang.renderpearl.api.vertex.VertexFormat ADJACENCY_LINE_FORMAT =
+            com.mojang.renderpearl.api.vertex.VertexFormat.builder(0)
+                    .addAttribute("Position",com.mojang.renderpearl.api.GpuFormat.RGB32_FLOAT)
+                    .addAttribute("Color",com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM)
+                    .addAttribute("Normal",com.mojang.renderpearl.api.GpuFormat.RGBA8_SNORM)
+                    .addAttribute("LineWidth",com.mojang.renderpearl.api.GpuFormat.R32_FLOAT)
+                    .addAttribute("UV2",com.mojang.renderpearl.api.GpuFormat.RG16_SINT).build();
+    private static RenderPipeline adjacencyLines(String name, boolean depthWrite) {
+        return RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/"+name))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS).withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS).withBindGroupLayout(BindGroupLayouts.FOG)
+            .withBindGroupLayout(BindGroupLayouts.SAMPLER2)
+            .withVertexShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"core/adjacency_lines"))
+            .withFragmentShader("core/rendertype_lines")
+            .withColorTargetState(ColorTargetState.DEFAULT).withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,depthWrite))
+            .withVertexBinding(0,ADJACENCY_LINE_FORMAT).withPrimitiveTopology(PrimitiveTopology.LINES).withCull(false).build();
+    }
+    // Forge pass 1 inherits depthMask(false); native item draws retain depth writes.
+    public static final RenderPipeline ADJACENCY_LINES=adjacencyLines("adjacency_lines",false);
+    public static final RenderPipeline ADJACENCY_ITEM_LINES=adjacencyLines("adjacency_item_lines",true);
+    public static final RenderType ADJACENCY_ITEM_LINES_TYPE=RenderType.create("chromaticraft_adjacency_item_lines",
+            RenderSetup.builder(ADJACENCY_ITEM_LINES).useLightmap().createRenderSetup());
+    public static final RenderType ADJACENCY_LINES_TYPE=RenderType.create("chromaticraft_adjacency_lines",
+            RenderSetup.builder(ADJACENCY_LINES).useLightmap().createRenderSetup());
+
     public static final RenderPipeline ADDITIVE_LINES = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/additive_lines"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -690,6 +717,10 @@ public final class ChromaRenderPipelines {
         IrisCompat.assignShadow(SOURCE_EDGES,"SHADOW_ENTITIES");
         event.registerPipeline(ADDITIVE_COLOR);
         event.registerPipeline(ADDITIVE_LINES);
+        event.registerPipeline(ADJACENCY_LINES);
+        event.registerPipeline(ADJACENCY_ITEM_LINES);
+        IrisCompat.assignWithoutShadow(ADJACENCY_ITEM_LINES,"LINES");
+        IrisCompat.assignWithoutShadow(ADJACENCY_LINES,"LINES");
         IrisCompat.assignWithoutShadow(ADDITIVE_COLOR,"BASIC");
         IrisCompat.assignWithoutShadow(ADDITIVE_LINES,"LINES");
         event.registerPipeline(ADDITIVE_COLOR_TRIANGLES);

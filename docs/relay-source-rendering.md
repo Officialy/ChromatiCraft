@@ -24,7 +24,7 @@ uses full time, and element spacing retains original integer division 360/count,
 including the nonuniform 7- and 16-element source rings.
 
 Crystals use fully unlit, culled screen blending with the inherited depth-write
-state. Enhanced caustics use the source nine quads and per-corner UVs (36 vertices),
+state (disabled in Forge pass 1, as confirmed by the original caller). Enhanced caustics use the source nine quads and per-corner UVs (36 vertices),
 fully unlit screen blending and explicitly disabled depth writes. Both submit
 through the existing native forward screen phase after terrain/classic or after
 OIT composition/improved transparency. Their images are opaque in alpha; no RGB

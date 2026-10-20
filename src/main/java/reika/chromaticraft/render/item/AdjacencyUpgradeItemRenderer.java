@@ -43,7 +43,7 @@ public final class AdjacencyUpgradeItemRenderer implements SpecialModelRenderer<
 			int overlayCoords, boolean hasFoil, int outlineColor) {
 		if (args == null)
 			return;
-		AdjacencyUpgradeRenderer.submitUpgrade(poseStack, collector, args.upgrade(), args.tier(), false, 0, null);
+		AdjacencyUpgradeRenderer.submitItemUpgrade(poseStack, collector, args.upgrade(), args.tier(), lightCoords);
 	}
 
 	@Override

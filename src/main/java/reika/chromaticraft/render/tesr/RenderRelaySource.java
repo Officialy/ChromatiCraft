@@ -117,7 +117,7 @@ public final class RenderRelaySource
 			draw.rotate(Axis.YP.rotationDegrees((float)(angle * 4)));
             draw.translate(-.5,-.5,-.5);
             ScreenParticleRendering.submitGeometry(collector,draw,
-                    EntityLighting.FULL_BRIGHT.screen(TextureAtlas.LOCATION_BLOCKS,true,true),
+                    EntityLighting.FULL_BRIGHT.screen(TextureAtlas.LOCATION_BLOCKS,true,false),
                     (captured,out)->crystal(out,captured,u0,u1,v0,v1,crystal));
 		}
 	}

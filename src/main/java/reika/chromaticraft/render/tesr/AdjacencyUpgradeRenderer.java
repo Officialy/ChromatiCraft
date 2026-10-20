@@ -31,6 +31,10 @@ import reika.chromaticraft.base.tileentity.TileEntityAdjacencyUpgrade;
 import reika.chromaticraft.registry.AdjacencyUpgrades;
 import reika.chromaticraft.registry.ChromaIcons;
 import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.LightCoordsUtil;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
 /**
@@ -60,11 +64,13 @@ public final class AdjacencyUpgradeRenderer implements BlockEntityRenderer<TileE
 		state.tier = te.getTier();
 		state.disabled = te.getLevel() != null && !te.canRun(te.getLevel(), te.getBlockPos());
 		state.seed = te.getBlockPos().getX()+te.getBlockPos().getY()*4+te.getBlockPos().getZ()*2;
+        state.inWorld=te.hasLevel();
+        state.animation=animationAt(state.upgrade,state.tier,state.disabled,state.seed,System.currentTimeMillis());
 	}
 
 	@Override
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
-		submitUpgrade(poseStack, collector, state.upgrade, state.tier, state.disabled, state.seed, camera.orientation);
+		submitAt(poseStack,collector,state.animation,state.inWorld,camera.yRot,camera.xRot,state.lightCoords);
 	}
 
 	/**
@@ -73,44 +79,34 @@ public final class AdjacencyUpgradeRenderer implements BlockEntityRenderer<TileE
 	 */
 	public static void submitUpgrade(PoseStack poseStack, SubmitNodeCollector collector, AdjacencyUpgrades upgrade,
 			int tier, boolean disabled, int seed, @Nullable Quaternionfc cameraOrientation) {
-		boolean inWorld = cameraOrientation != null;
-		poseStack.pushPose();
-		// V33a glScaled(1, -1, -1) after moving to the block.
-		poseStack.scale(1, -1, -1);
+        var angles=cameraOrientation==null?new Vector3f():cameraOrientation.getEulerAnglesYXZ(new Vector3f());
+        submitAt(poseStack,collector,animationAt(upgrade,tier,disabled,seed,System.currentTimeMillis()),cameraOrientation!=null,
+                180-(float)Math.toDegrees(angles.y),-(float)Math.toDegrees(angles.x),LightCoordsUtil.FULL_BRIGHT);
+    }
 
-		if (!inWorld) {
-			double a = 0.5;
-			double b = -0.4;
-			double c = -0.5;
-			poseStack.pushPose();
-			poseStack.translate(a, b, c);
-			submitInnerItem(poseStack, collector);
-			poseStack.rotate(Axis.YP.rotationDegrees(90));
-			submitInnerItem(poseStack, collector);
-			poseStack.popPose();
-		}
+    /** Source item helper with native caller light, captured before queuing any geometry. */
+    public static void submitItemUpgrade(PoseStack pose,SubmitNodeCollector collector,AdjacencyUpgrades upgrade,int tier,int light) {
+        submitAt(pose,collector,animationAt(upgrade,tier,false,0,System.currentTimeMillis()),false,0,0,light);
+    }
 
-		submitMiddle(poseStack, collector, upgrade, tier, disabled, seed, inWorld);
+    /** Render an immutable source animation snapshot; previews can provide their own captured clock/camera. */
+    public static void submitAt(PoseStack poseStack,SubmitNodeCollector collector,Animation animation,
+            boolean inWorld,float yaw,float pitch,int light) {
+        poseStack.pushPose();poseStack.scale(1,-1,-1);
+        if(!inWorld) {
+            poseStack.pushPose();poseStack.translate(.5,-.4,-.5);
+            submitInnerItem(poseStack,collector,light);
+            poseStack.rotate(Axis.YP.rotationDegrees(90));submitInnerItem(poseStack,collector,light);
+            poseStack.popPose();
+        }
+        submitMiddle(poseStack,collector,animation,inWorld,light);
+        if(inWorld)submitInnerWorld(poseStack,collector,yaw,pitch,light);
+        poseStack.popPose();
+    }
 
-		if (inWorld) {
-			poseStack.popPose();
-			submitInnerWorld(poseStack, collector, cameraOrientation);
-			return;
-		}
-		poseStack.popPose();
-	}
-
-	private static void submitMiddle(PoseStack poseStack, SubmitNodeCollector collector, AdjacencyUpgrades upgrade,
-			int tier, boolean dis, int seed, boolean inWorld) {
-		poseStack.pushPose();
-		poseStack.translate(0.5, -0.5, -0.5);
-
-		double s = 1.5;
-		if (!inWorld) {
-			poseStack.scale((float)s, (float)s, (float)s);
-		}
-
-		double time = System.currentTimeMillis()+seed*48D;
+    public record Animation(double rx,double ry,double rz,int color1,int color2,int color3) {}
+    public static Animation animationAt(AdjacencyUpgrades upgrade,int tier,boolean dis,int seed,long millis) {
+		double time = millis+seed*48D;
 		if (dis) {
 			time = time/6D;
 		}
@@ -151,12 +147,18 @@ public final class AdjacencyUpgradeRenderer implements BlockEntityRenderer<TileE
 		c2 = c2 | 0xff000000;
 		c3 = c3 | 0xff000000;
 
-		poseStack.rotate(Axis.XP.rotationDegrees((float)rx));
-		submitRing(poseStack, collector, 0.25, c1, 1, 15);
-		poseStack.rotate(Axis.YP.rotationDegrees((float)ry));
-		submitRing(poseStack, collector, 0.28125, c2, 0, 15);
-		poseStack.rotate(Axis.ZP.rotationDegrees((float)rz));
-		submitRing(poseStack, collector, 0.3125, c3, 2, 15);
+        return new Animation(rx,ry,rz,c1,c2,c3);
+    }
+    private static void submitMiddle(PoseStack poseStack,SubmitNodeCollector collector,Animation animation,boolean inWorld,int light) {
+        poseStack.pushPose();poseStack.translate(.5,-.5,-.5);
+        if(!inWorld)poseStack.scale(1.5F,1.5F,1.5F);
+
+		poseStack.rotate(Axis.XP.rotationDegrees((float)animation.rx));
+		submitRing(poseStack, collector, 0.25, animation.color1, 1, 15, light, inWorld);
+		poseStack.rotate(Axis.YP.rotationDegrees((float)animation.ry));
+		submitRing(poseStack, collector, 0.28125, animation.color2, 0, 15, light, inWorld);
+		poseStack.rotate(Axis.ZP.rotationDegrees((float)animation.rz));
+		submitRing(poseStack, collector, 0.3125, animation.color3, 2, 15, light, inWorld);
 		poseStack.popPose();
 	}
 
@@ -165,20 +167,22 @@ public final class AdjacencyUpgradeRenderer implements BlockEntityRenderer<TileE
 	 * {@code renderVCircle(phi 0)} (Y-Z), 1 is {@code renderVCircle(phi 90)} (X-Y, running the other way round) and 2
 	 * is {@code renderCircle} (X-Z).
 	 */
-	private static void submitRing(PoseStack poseStack, SubmitNodeCollector collector, double r, int argb, int plane, int step) {
-		collector.submitCustomGeometry(poseStack, RenderTypes.lines(), (pose, lines) -> {
+	private static void submitRing(PoseStack poseStack, SubmitNodeCollector collector, double r, int argb, int plane, int step, int light, boolean world) {
+        SubmitNodeCollector.CustomGeometryRenderer draw=(pose,lines)->{
 			Vector3f prev = null;
 			Vector3f first = null;
 			for (int i = 0; i < 360; i += step) {
 				Vector3f p = ringPoint(r, plane, i);
 				if (prev != null)
-					segment(pose, lines, prev, p, argb);
+					segment(pose, lines, prev, p, argb, light);
 				else
 					first = p;
 				prev = p;
 			}
-			segment(pose, lines, prev, first, argb);
-		});
+			segment(pose, lines, prev, first, argb, light);
+        };
+        if(world)ScreenParticleRendering.submitGeometry(collector,poseStack,ChromaRenderPipelines.ADJACENCY_LINES_TYPE,draw);
+        else collector.submitCustomGeometry(poseStack,ChromaRenderPipelines.ADJACENCY_ITEM_LINES_TYPE,draw);
 	}
 
 	private static Vector3f ringPoint(double r, int plane, int deg) {
@@ -190,10 +194,10 @@ public final class AdjacencyUpgradeRenderer implements BlockEntityRenderer<TileE
 		};
 	}
 
-	private static void segment(PoseStack.Pose pose, VertexConsumer lines, Vector3f a, Vector3f b, int argb) {
+	private static void segment(PoseStack.Pose pose, VertexConsumer lines, Vector3f a, Vector3f b, int argb, int light) {
 		Vector3f n = new Vector3f(b).sub(a).normalize();
-		lines.addVertex(pose, a.x, a.y, a.z).setColor(argb).setNormal(pose, n.x, n.y, n.z).setLineWidth(LINE_WIDTH);
-		lines.addVertex(pose, b.x, b.y, b.z).setColor(argb).setNormal(pose, n.x, n.y, n.z).setLineWidth(LINE_WIDTH);
+		lines.addVertex(pose, a.x, a.y, a.z).setColor(argb).setNormal(pose, n.x, n.y, n.z).setLineWidth(LINE_WIDTH).setLight(light);
+		lines.addVertex(pose, b.x, b.y, b.z).setColor(argb).setNormal(pose, n.x, n.y, n.z).setLineWidth(LINE_WIDTH).setLight(light);
 	}
 
 	private static TextureAtlasSprite glow() {
@@ -201,58 +205,38 @@ public final class AdjacencyUpgradeRenderer implements BlockEntityRenderer<TileE
 	}
 
 	/** V33a {@code drawInner}, in world: the glow section, a sixteenth trimmed off each edge, facing the camera. */
-	private static void submitInnerWorld(PoseStack poseStack, SubmitNodeCollector collector, Quaternionfc orientation) {
-		poseStack.pushPose();
-		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.rotate(orientation);
-		float s = 0.1875F;
-		poseStack.scale(s, s, s);
-		submitGlowQuad(poseStack, collector, false);
-		poseStack.popPose();
-	}
-
-	/** V33a {@code drawInner}, as an item: tilted 45 degrees round and 30 back, an eighth of a block lower. */
-	private static void submitInnerItem(PoseStack poseStack, SubmitNodeCollector collector) {
-		poseStack.pushPose();
-		poseStack.translate(0, -0.125, 0);
-		poseStack.rotate(Axis.YP.rotationDegrees(-45));
-		poseStack.rotate(Axis.XP.rotationDegrees(-30));
-		float s = 0.1875F;
-		poseStack.scale(s, s, s);
-		submitGlowQuad(poseStack, collector, true);
-		poseStack.popPose();
-	}
-
-	private static void submitGlowQuad(PoseStack poseStack, SubmitNodeCollector collector, boolean flippedFrame) {
-		TextureAtlasSprite ico = glow();
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
-				(pose, v5) -> {
-					float u = ico.getU0();
-					float v = ico.getV0();
-					float du = ico.getU1();
-					float dv = ico.getV1();
-					float uu = du-u;
-					float vv = dv-v;
-					float r = 16;
-					u += uu/r;
-					du -= uu/r;
-					v += vv/r;
-					dv -= vv/r;
-					// V33a's quad runs (-1,-1) to (1,1) in its y-flipped frame; the camera frame is not flipped.
-					float y = flippedFrame ? 1 : -1;
-					int c = 0xffffffff;
-					v5.addVertex(pose, -1, -y, 0).setUv(u, v).setColor(c);
-					v5.addVertex(pose, 1, -y, 0).setUv(du, v).setColor(c);
-					v5.addVertex(pose, 1, y, 0).setUv(du, dv).setColor(c);
-					v5.addVertex(pose, -1, y, 0).setUv(u, dv).setColor(c);
-				});
-	}
+    private static void submitInnerWorld(PoseStack pose,SubmitNodeCollector collector,float yaw,float pitch,int light) {
+        pose.pushPose();pose.translate(.5,-.5,-.5);pose.scale(.1875F,.1875F,.1875F);
+        pose.rotate(Axis.YP.rotationDegrees(yaw));pose.rotate(Axis.XP.rotationDegrees(pitch));
+        submitGlowQuad(pose,collector,light,true);pose.popPose();
+    }
+    private static void submitInnerItem(PoseStack pose,SubmitNodeCollector collector,int light) {
+        pose.pushPose();pose.translate(0,-.125,0);pose.rotate(Axis.YP.rotationDegrees(-45));
+        pose.rotate(Axis.XP.rotationDegrees(-30));pose.scale(.1875F,.1875F,.1875F);
+        submitGlowQuad(pose,collector,light,false);pose.popPose();
+    }
+    private static void submitGlowQuad(PoseStack pose,SubmitNodeCollector collector,int light,boolean world) {
+        var sprite=glow();float du=sprite.getU1()-sprite.getU0(),dv=sprite.getV1()-sprite.getV0();
+        float u0=sprite.getU0()+du/16,u1=sprite.getU1()-du/16,v0=sprite.getV0()+dv/16,v1=sprite.getV1()-dv/16;
+        SubmitNodeCollector.CustomGeometryRenderer draw=(captured,out)->{
+            glowVertex(captured,out,-1,-1,u0,v0,light);glowVertex(captured,out,1,-1,u1,v0,light);
+            glowVertex(captured,out,1,1,u1,v1,light);glowVertex(captured,out,-1,1,u0,v1,light);
+        };
+        var type=EntityLighting.LIGHTMAP_ONLY.screen(TextureAtlas.LOCATION_BLOCKS,false,!world);
+        if(world)ScreenParticleRendering.submitGeometry(collector,pose,type,draw);else collector.submitCustomGeometry(pose,type,draw);
+    }
+    private static void glowVertex(PoseStack.Pose pose,VertexConsumer out,float x,float y,float u,float v,int light) {
+        out.addVertex(pose,x,y,0).setUv(u,v).setColor(0xffffffff).setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(light).setNormal(pose,0,0,1);
+    }
 
 	public static final class State extends BlockEntityRenderState {
 		private AdjacencyUpgrades upgrade = AdjacencyUpgrades.LIGHTBLUE;
 		private int tier;
 		private boolean disabled;
 		private int seed;
+        private boolean inWorld;
+        private Animation animation;
 	}
 
 }
