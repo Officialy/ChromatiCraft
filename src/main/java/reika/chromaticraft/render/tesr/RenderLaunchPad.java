@@ -23,7 +23,10 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.LightCoordsUtil;
 import reika.chromaticraft.tileentity.transport.TileEntityLaunchPad;
 
 /**
@@ -50,7 +53,7 @@ public final class RenderLaunchPad implements BlockEntityRenderer<TileEntityLaun
 	public void extractRenderState(TileEntityLaunchPad te, State state, float partialTick, Vec3 cameraPosition,
 			ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
 		BlockEntityRenderer.super.extractRenderState(te, state, partialTick, cameraPosition, breakProgress);
-		state.charge = te.hasStructure() ? te.getChargeFraction() : 0;
+		state.charge = te.hasLevel() && te.hasStructure() ? te.getChargeFraction() : 0;
 		state.enhanced = te.isEnhanced();
 	}
 
@@ -62,18 +65,18 @@ public final class RenderLaunchPad implements BlockEntityRenderer<TileEntityLaun
 			return;
 		PoseStack.Pose pose = poseStack.last().copy();
 		boolean enhanced = state.enhanced;
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(TEXTURE), (ignored, v5) -> {
+		ScreenParticleRendering.submitGeometry(collector, poseStack, EntityLighting.FULL_BRIGHT.screen(TEXTURE,true), (ignored, v5) -> {
 			if (enhanced) {
-				renderFan(pose, v5, f, 0x00ff00);
-				renderFan(pose, v5, f, 0xffffff);
+				renderFan(pose, v5, f, 0x00ff00, 0x00ff00);
+				renderFan(pose, v5, f, 0xffffff, 0x00ff00);
 			}
 			else {
-				renderFan(pose, v5, f, 0xffffff);
+				renderFan(pose, v5, f, 0xffffff, 0xffffff);
 			}
 		});
 	}
 
-	private static void renderFan(PoseStack.Pose pose, VertexConsumer v5, float f, int color) {
+	private static void renderFan(PoseStack.Pose pose, VertexConsumer v5, float f, int color, int centerColor) {
 		double s = 1.5;
 		double lim = f*360;
 		double da = 5;
@@ -89,10 +92,11 @@ public final class RenderLaunchPad implements BlockEntityRenderer<TileEntityLaun
 			double u = 0.5+0.5*dx/s;
 			double v = 0.5+0.5*dz/s;
 			if (!Double.isNaN(px)) {
-				v5.addVertex(pose, 0.5F, h, 0.5F).setUv(0.5F, 0.5F).setColor(c);
-				v5.addVertex(pose, (float)(0.5+px), h, (float)(0.5+pz)).setUv((float)pu, (float)pv).setColor(c);
-				v5.addVertex(pose, (float)(0.5+dx), h, (float)(0.5+dz)).setUv((float)u, (float)v).setColor(c);
-				v5.addVertex(pose, (float)(0.5+dx), h, (float)(0.5+dz)).setUv((float)u, (float)v).setColor(c);
+                // Convert the source CW fan into native CCW top faces; keep its first anchor color.
+                vertex(pose,v5,.5F,h,.5F,.5F,.5F,0xff000000|centerColor);
+                vertex(pose,v5,(float)(.5+dx),h,(float)(.5+dz),(float)u,(float)v,c);
+                vertex(pose,v5,(float)(.5+px),h,(float)(.5+pz),(float)pu,(float)pv,c);
+                vertex(pose,v5,(float)(.5+px),h,(float)(.5+pz),(float)pu,(float)pv,c);
 			}
 			px = dx;
 			pz = dz;
@@ -100,6 +104,11 @@ public final class RenderLaunchPad implements BlockEntityRenderer<TileEntityLaun
 			pv = v;
 		}
 	}
+
+    private static void vertex(PoseStack.Pose pose,VertexConsumer out,float x,float y,float z,float u,float v,int color) {
+        out.addVertex(pose,x,y,z).setUv(u,v).setColor(color).setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose,0,1,0);
+    }
 
 	public static final class State extends BlockEntityRenderState {
 		private float charge;

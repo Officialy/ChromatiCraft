@@ -277,6 +277,7 @@ public final class ChromaGameTests {
 		ChromaItemPortTests.register(event, env);
 		ChromaTieredResourceTests.register(event, env);
 		ChromaCrafterTests.register(event, env);
+		ChromaLaunchPadTests.register(event, env);
 		ChromaWandPortTests.register(event, env);
 		BiomeFragmentMusicTests.register(event, env);
         reika.chromaticraft.items.tools.CaveRouteGameTests.register(event, env);

@@ -15,7 +15,10 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.LightCoordsUtil;
 import reika.chromaticraft.tileentity.transport.TileEntityFluidDistributor;
 
 /** V33a's blue, pulsing ADDITIVEDARK lattice halo; the source renderer did not draw a solid model. */
@@ -35,13 +38,17 @@ public final class RenderFluidDistributor implements BlockEntityRenderer<TileEnt
 			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
 		BlockEntityRenderer.super.extractRenderState(tile, state, partialTick, cameraPosition, breakProgress);
 		state.ticks = tile.getTicksExisted() + partialTick;
+		state.inWorld = tile.hasLevel();
 	}
 
 	@Override
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
 		PoseStack.Pose pose = poseStack.last().copy();
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(LATTICE),
-				(ignored, vertices) -> drawHalo(pose, vertices, state.ticks));
+        float ticks = state.ticks;
+        var type=EntityLighting.LIGHTMAP_ONLY.screen(LATTICE,false);
+        SubmitNodeCollector.CustomGeometryRenderer draw=(ignored, vertices)->drawHalo(pose,vertices,ticks);
+        if(state.inWorld) ScreenParticleRendering.submitGeometry(collector,poseStack,type,draw);
+        else collector.submitCustomGeometry(poseStack,type,draw);
 	}
 
 	private static void drawHalo(PoseStack.Pose pose, VertexConsumer v, float ticks) {
@@ -52,11 +59,11 @@ public final class RenderFluidDistributor implements BlockEntityRenderer<TileEnt
 		float down = -expansion[0], up = 1 + expansion[1];
 		float north = -expansion[2], south = 1 + expansion[3];
 		quad(pose, v, west, up, north, east, up, north, east, down, north, west, down, north);
-		quad(pose, v, west, up, south, west, down, south, east, down, south, east, up, south);
-		quad(pose, v, west, up, south, west, up, north, west, down, north, west, down, south);
+		quad(pose, v, west, up, south, east, up, south, east, down, south, west, down, south);
+		quad(pose, v, west, up, north, west, up, south, west, down, south, west, down, north);
 		quad(pose, v, east, up, north, east, up, south, east, down, south, east, down, north);
 		quad(pose, v, west, up, south, east, up, south, east, up, north, west, up, north);
-		quad(pose, v, west, down, north, east, down, north, east, down, south, west, down, south);
+		quad(pose, v, west, down, south, east, down, south, east, down, north, west, down, north);
 	}
 
 	private static void quad(PoseStack.Pose pose, VertexConsumer v,
@@ -69,10 +76,11 @@ public final class RenderFluidDistributor implements BlockEntityRenderer<TileEnt
 	}
 
 	private static void vertex(PoseStack.Pose pose, VertexConsumer v, float x, float y, float z, float u, float texV) {
-		v.addVertex(pose, x, y, z).setUv(u, texV).setColor(0xff2255ff);
+		v.addVertex(pose, x, y, z).setUv(u, texV).setColor(0xff2255ff).setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose,0,1,0);
 	}
 
 	public static final class State extends BlockEntityRenderState {
+		private boolean inWorld;
 		private float ticks;
 	}
 }

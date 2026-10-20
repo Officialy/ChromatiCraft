@@ -163,6 +163,8 @@ public class TileEntityLaunchPad extends TileEntityChromaticBase implements Mult
 	}
 
 	private void checkForStructure(Level world, BlockPos pos) {
+        // Structure templates are server-owned; clients retain the synchronized result.
+        if (world.isClientSide()) return;
 		ChromaStructureBase struct = ChromaStructures.LAUNCHPAD.getStructure();
 		struct.resetToDefaults();
 		enhanced = false;
