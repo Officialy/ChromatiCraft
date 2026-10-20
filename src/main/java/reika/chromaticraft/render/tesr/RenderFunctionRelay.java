@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.auxiliary.TileEntityFunctionRelay;
 import reika.dragonapi.instantiable.rendering.ColorBlendList;
+import reika.dragonapi.client.ScreenParticleRendering;
 
 public final class RenderFunctionRelay implements BlockEntityRenderer<TileEntityFunctionRelay, RenderFunctionRelay.State> {
     public static final Identifier SPRITE = Identifier.fromNamespaceAndPath("chromaticraft", "block/icons/cellflare");
@@ -39,7 +40,9 @@ public final class RenderFunctionRelay implements BlockEntityRenderer<TileEntity
     @Override public void extractRenderState(TileEntityFunctionRelay tile, State state, float partialTick,
             Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(tile, state, partialTick, cameraPosition, breakProgress);
-        state.color = colorAt((long)tile.getTicksExisted() + tile.hashCode());
+        state.inWorld = tile.hasLevel();
+        state.color = state.inWorld ? colorAt((long)tile.getTicksExisted() + tile.hashCode())
+                : colorAt(System.currentTimeMillis() / 50);
     }
 
     @Override public AABB getRenderBoundingBox(TileEntityFunctionRelay tile) {
@@ -47,22 +50,33 @@ public final class RenderFunctionRelay implements BlockEntityRenderer<TileEntity
     }
 
     @Override public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+        if (!state.inWorld) {
+            submitItem(poseStack, collector, state.color);
+            return;
+        }
         poseStack.pushPose();
+        poseStack.translate(0, 1, 1);
+        poseStack.scale(1, -1, -1);
         poseStack.translate(0.5, 0.5, 0.5);
-        poseStack.rotate(camera.orientation);
-        poseStack.scale(0.875F, -0.875F, 0.875F);
-        submitSprite(poseStack, collector, state.color);
+        poseStack.scale(0.875F, 0.875F, 0.875F);
+        poseStack.rotate(Axis.YP.rotationDegrees(camera.yRot));
+        poseStack.rotate(Axis.XP.rotationDegrees(camera.xRot));
+        submitSprite(poseStack, collector, state.color, true);
         poseStack.popPose();
     }
 
     public static void submitItem(PoseStack poseStack, SubmitNodeCollector collector) {
+        submitItem(poseStack, collector, colorAt(System.currentTimeMillis() / 50));
+    }
+
+    private static void submitItem(PoseStack poseStack, SubmitNodeCollector collector, int color) {
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
         poseStack.scale(1, -1, -1);
         poseStack.rotate(Axis.YP.rotationDegrees(-45));
         poseStack.rotate(Axis.XP.rotationDegrees(-30));
         poseStack.scale(1.125F, 1.125F, 1.125F);
-        submitSprite(poseStack, collector, colorAt(System.currentTimeMillis() / 50));
+        submitSprite(poseStack, collector, color, false);
         poseStack.popPose();
     }
 
@@ -70,21 +84,22 @@ public final class RenderFunctionRelay implements BlockEntityRenderer<TileEntity
         return 0xff000000 | COLORS.getColor(Math.floorMod(time, 100));
     }
 
-    private static void submitSprite(PoseStack source, SubmitNodeCollector collector, int color) {
+    private static void submitSprite(PoseStack pose, SubmitNodeCollector collector, int color, boolean inWorld) {
         var sprite = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(SPRITE);
-        PoseStack pose = new PoseStack();
-        pose.last().pose().set(source.last().pose());
-        pose.last().normal().set(source.last().normal());
-        collector.submitCustomGeometry(pose, ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
-                (unused, out) -> {
-                    out.addVertex(pose.last(), -1, -1, 0).setUv(sprite.getU0(), sprite.getV0()).setColor(color);
-                    out.addVertex(pose.last(), 1, -1, 0).setUv(sprite.getU1(), sprite.getV0()).setColor(color);
-                    out.addVertex(pose.last(), 1, 1, 0).setUv(sprite.getU1(), sprite.getV1()).setColor(color);
-                    out.addVertex(pose.last(), -1, 1, 0).setUv(sprite.getU0(), sprite.getV1()).setColor(color);
-                });
+        float u0 = sprite.getU0(), u1 = sprite.getU1(), v0 = sprite.getV0(), v1 = sprite.getV1();
+        SubmitNodeCollector.CustomGeometryRenderer draw = (captured, out) -> {
+            out.addVertex(captured, -1, -1, 0).setUv(u0, v0).setColor(color);
+            out.addVertex(captured, 1, -1, 0).setUv(u1, v0).setColor(color);
+            out.addVertex(captured, 1, 1, 0).setUv(u1, v1).setColor(color);
+            out.addVertex(captured, -1, 1, 0).setUv(u0, v1).setColor(color);
+        };
+        var type = ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS);
+        if (inWorld) ScreenParticleRendering.submitGeometry(collector, pose, type, draw);
+        else collector.submitCustomGeometry(pose, type, draw);
     }
 
     public static final class State extends BlockEntityRenderState {
         private int color;
+        private boolean inWorld;
     }
 }
