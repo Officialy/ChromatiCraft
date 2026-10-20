@@ -11,6 +11,10 @@ package reika.chromaticraft.render.tesr;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -38,7 +42,7 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
  * V33a {@code CrystalPlantRenderer}: once a bloom buds it grows a pointed pod of {@code crystal/bloom} over the
  * cross, in its element's colour at three-quarter saturation; while budding the pod is at 0.625 scale, off to one
  * side. A ripe bloom adds a camera-facing glow ({@code plant_glow}) and sparkle ({@code sparkle2}) above the pod
- * in its element's colour, ADDITIVEDARK and unlit.
+ * in its element's colour, ADDITIVEDARK with the source lightmap.
  *
  * <p>V33a drew in a frame flipped by {@code glScalef(1, -1, -1)} from {@code (x, y+1, z+1)} and nudged by 1/16;
  * every vertex here is that frame's point carried into block space, so the geometry is V33a's exactly.
@@ -98,31 +102,34 @@ public final class CrystalPlantRenderer implements BlockEntityRenderer<TileEntit
 		if (!state.pod)
 			return;
 		var atlas = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
-		TextureAtlasSprite bulb = atlas.getSprite(BULB);
+		Uv bulb = Uv.capture(atlas.getSprite(BULB));
 		int bulbColor = 0xFF000000 | ReikaColorAPI.getModifiedSat(state.color, 0.75F);
 		boolean ripe = state.ripe;
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.translucentSprite(TextureAtlas.LOCATION_BLOCKS),
-				(pose, vertices) -> bulb(pose, vertices, bulb, bulbColor, ripe));
+        int light = state.lightCoords;
+        collector.submitCustomGeometry(poseStack, EntityLighting.LIGHTMAP_ONLY.translucent(TextureAtlas.LOCATION_BLOCKS,true),
+                (pose,vertices)->bulb(pose,vertices,bulb,bulbColor,ripe,light));
 
 		if (ripe) {
 			poseStack.pushPose();
 			poseStack.translate(0.5, 1.25, 0.5);
-			poseStack.rotate(camera.orientation);
+			poseStack.scale(1,-1,-1);
+            poseStack.rotate(Axis.YP.rotationDegrees(camera.yRot));
+            poseStack.rotate(Axis.XP.rotationDegrees(camera.xRot));
 			int glowColor = 0xFF000000 | state.color;
-			TextureAtlasSprite glow = atlas.getSprite(ChromaIcons.RADIATE.getIcon());
-			TextureAtlasSprite sparkle = atlas.getSprite(ChromaIcons.SPARKLE.getIcon());
-			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
+			Uv glow = Uv.capture(atlas.getSprite(ChromaIcons.RADIATE.getIcon()));
+			Uv sparkle = Uv.capture(atlas.getSprite(ChromaIcons.SPARKLE.getIcon()));
+			ScreenParticleRendering.submitGeometry(collector,poseStack,EntityLighting.LIGHTMAP_ONLY.screen(TextureAtlas.LOCATION_BLOCKS,true),
 					(pose, vertices) -> {
-						billboard(pose, vertices, glow, glowColor);
-						billboard(pose, vertices, sparkle, glowColor);
+						billboard(pose,vertices,glow,glowColor,light);
+						billboard(pose,vertices,sparkle,glowColor,light);
 					});
 			poseStack.popPose();
 		}
 	}
 
-	private static void bulb(PoseStack.Pose pose, VertexConsumer out, TextureAtlasSprite ico, int color, boolean ripe) {
-		float[] us = {ico.getU0(), ico.getU0()+(ico.getU1()-ico.getU0())/2, ico.getU1()};
-		float[] vs = {ico.getV0(), ico.getV0()+(ico.getV1()-ico.getV0())/2, ico.getV1()};
+	private static void bulb(PoseStack.Pose pose, VertexConsumer out, Uv ico, int color, boolean ripe, int light) {
+		float[] us = {ico.u0, ico.u0+(ico.u1-ico.u0)/2, ico.u1};
+		float[] vs = {ico.v0, ico.v0+(ico.v1-ico.v0)/2, ico.v1};
 		for (double[] v : BULB_VERTICES) {
 			double x = v[0];
 			double y = v[1];
@@ -136,18 +143,26 @@ public final class CrystalPlantRenderer implements BlockEntityRenderer<TileEntit
 			y += 0.0625;
 			// The flipped frame: glTranslatef(x, y+1, z+1), glScalef(1, -1, -1).
 			out.addVertex(pose, (float)x, (float)(1-y), (float)(1-z))
-					.setUv(us[(int)v[3]], vs[(int)v[4]]).setColor(color);
+					.setUv(us[(int)v[3]], vs[(int)v[4]]).setColor(color)
+                    .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose,0,1,0);
 		}
 	}
 
 	/** V33a's unit quad at a quarter scale, facing the camera. */
-	private static void billboard(PoseStack.Pose pose, VertexConsumer out, TextureAtlasSprite ico, int color) {
-		float s = 0.25F;
-		out.addVertex(pose, -s, -s, 0).setUv(ico.getU0(), ico.getV1()).setColor(color);
-		out.addVertex(pose, s, -s, 0).setUv(ico.getU1(), ico.getV1()).setColor(color);
-		out.addVertex(pose, s, s, 0).setUv(ico.getU1(), ico.getV0()).setColor(color);
-		out.addVertex(pose, -s, s, 0).setUv(ico.getU0(), ico.getV0()).setColor(color);
-	}
+    private static void billboard(PoseStack.Pose pose,VertexConsumer out,Uv ico,int color,int light) {
+        float s=.25F;
+        vertex(pose,out,-s,-s,ico.u0,ico.v0,color,light);
+        vertex(pose,out,s,-s,ico.u1,ico.v0,color,light);
+        vertex(pose,out,s,s,ico.u1,ico.v1,color,light);
+        vertex(pose,out,-s,s,ico.u0,ico.v1,color,light);
+    }
+    private static void vertex(PoseStack.Pose pose,VertexConsumer out,float x,float y,float u,float v,int color,int light) {
+        out.addVertex(pose,x,y,0).setUv(u,v).setColor(color).setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(light).setNormal(pose,0,1,0);
+    }
+    private record Uv(float u0,float u1,float v0,float v1) {
+        static Uv capture(TextureAtlasSprite sprite){return new Uv(sprite.getU0(),sprite.getU1(),sprite.getV0(),sprite.getV1());}
+    }
 
 	/** The pod and its glow rise half a block above the plant's own cube. */
 	@Override
