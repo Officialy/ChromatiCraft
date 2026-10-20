@@ -29,14 +29,18 @@ public final class PersonalChargerItemRenderer implements NoDataSpecialModelRend
 		poseStack.translate(0.5, 0.5, 0.5);
 		poseStack.rotate(Axis.YP.rotationDegrees(45));
 		poseStack.rotate(Axis.XP.rotationDegrees(-45));
-		RenderPersonalCharger.submitItem(poseStack, collector);
+		RenderPersonalCharger.submitItem(poseStack, collector, lightCoords);
 		poseStack.popPose();
 	}
 
 	@Override
 	public void getExtents(Consumer<Vector3fc> output) {
-		output.accept(new Vector3f(0));
-		output.accept(new Vector3f(1));
+        PoseStack pose = new PoseStack();
+        pose.translate(.5,.5,.5);
+        pose.rotate(Axis.YP.rotationDegrees(45));
+        pose.rotate(Axis.XP.rotationDegrees(-45));
+        for (float x : new float[]{-.875F,.875F}) for (float y : new float[]{-.875F,.875F})
+            output.accept(new Vector3f(x,y,0).mulPosition(pose.last().pose()));
 	}
 
 	public record Unbaked() implements NoDataSpecialModelRenderer.Unbaked {
