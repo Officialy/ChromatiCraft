@@ -1,186 +1,194 @@
 package reika.chromaticraft.render.tesr;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Axis;
-
+import com.mojang.blaze3d.vertex.*;
+import java.util.*;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
-import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.*;
+import net.minecraft.client.renderer.blockentity.*;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
-import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.renderer.texture.TextureAtlas;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.*;
 import net.minecraft.core.Direction;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.Vec3;
-
 import org.jspecify.annotations.Nullable;
-
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.relay.BlockLumenRelay;
 import reika.chromaticraft.block.relay.BlockLumenRelay.TileEntityLumenRelay;
-import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
 
-/** Submit-pipeline port of V33a {@code RelayRenderer}, including its input-face dot. */
-public final class RenderLumenRelay
-		implements BlockEntityRenderer<TileEntityLumenRelay, RenderLumenRelay.State> {
-
-	private static final Identifier PYLON_STONE = sprite("block/pylon/block_0");
-	private static final Identifier CRYSTAL = sprite("block/crystal/crystal_32");
-	private static final Identifier GLOW_FRAME = sprite("block/icons/glowframe2");
-	private static final Identifier GLOW_DOT = sprite("block/icons/glowframe_dot2");
-
-	public RenderLumenRelay(BlockEntityRendererProvider.Context context) {}
-	@Override public State createRenderState() { return new State(); }
-
-	@Override
-	public void extractRenderState(TileEntityLumenRelay relay, State state, float partialTick,
-			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
-		BlockEntityRenderer.super.extractRenderState(relay, state, partialTick, cameraPosition,
-				breakProgress);
-		state.facing = relay.getBlockState().getValue(BlockLumenRelay.FACING);
-		state.input = relay.getInput();
-	}
-
-	@Override
-	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
-			CameraRenderState camera) {
-		TextureAtlasSprite stone = atlas(PYLON_STONE);
-		TextureAtlasSprite crystal = atlas(CRYSTAL);
-		TextureAtlasSprite frame = atlas(GLOW_FRAME);
-		TextureAtlasSprite dot = atlas(GLOW_DOT);
-		PoseStack rotated = oriented(poseStack, state.facing);
-		Direction localInput = inverseDirection(state.input, state.facing);
-
-		PoseStack basePose = copy(rotated);
-		collector.submitCustomGeometry(basePose, RenderTypes.entityCutout(TextureAtlas.LOCATION_BLOCKS),
-				(unused, out) -> {
-					box(out, basePose.last(), stone, 0.375F, 0, 0.375F,
-							0.625F, 0.625F, 0.625F, 0xffffffff, state.lightCoords, null, null, Direction.UP);
-					box(out, basePose.last(), crystal, 0.375F, 0.625F, 0.375F,
-							0.625F, 0.875F, 0.625F, 0xffffffff,
-							LightCoordsUtil.FULL_BRIGHT, null, null, Direction.DOWN);
-				});
-
-		PoseStack glowPose = copy(rotated);
-		collector.submitCustomGeometry(glowPose,
-				ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
-				(unused, out) -> box(out, glowPose.last(), frame,
-						0.3125F, 0.5625F, 0.3125F, 0.6875F, 0.9375F, 0.6875F,
-						0xffffffff, LightCoordsUtil.FULL_BRIGHT, localInput, dot, null));
-	}
-
-	private static PoseStack oriented(PoseStack source, Direction facing) {
-		PoseStack pose = copy(source);
-		pose.translate(0.5, 0.5, 0.5);
-		switch (facing) {
-			case DOWN -> pose.rotate(Axis.XP.rotationDegrees(180));
-			case EAST -> pose.rotate(Axis.ZP.rotationDegrees(-90));
-			case WEST -> pose.rotate(Axis.ZP.rotationDegrees(90));
-			case SOUTH -> pose.rotate(Axis.XP.rotationDegrees(90));
-			case NORTH -> pose.rotate(Axis.XP.rotationDegrees(-90));
-			case UP -> {}
-		}
-		pose.translate(-0.5, -0.5, -0.5);
-		return pose;
-	}
-
-	private static Direction inverseDirection(Direction world, Direction facing) {
-		for (Direction candidate : Direction.values())
-			if (rotateDirection(candidate, facing) == world) return candidate;
-		return Direction.DOWN;
-	}
-
-	private static Direction rotateDirection(Direction direction, Direction facing) {
-		return switch (facing) {
-			case UP -> direction;
-			case DOWN -> switch (direction) {
-				case UP -> Direction.DOWN; case DOWN -> Direction.UP;
-				case NORTH -> Direction.SOUTH; case SOUTH -> Direction.NORTH;
-				default -> direction;
-			};
-			case EAST -> switch (direction) {
-				case UP -> Direction.EAST; case DOWN -> Direction.WEST;
-				case EAST -> Direction.DOWN; case WEST -> Direction.UP;
-				default -> direction;
-			};
-			case WEST -> switch (direction) {
-				case UP -> Direction.WEST; case DOWN -> Direction.EAST;
-				case EAST -> Direction.UP; case WEST -> Direction.DOWN;
-				default -> direction;
-			};
-			case SOUTH -> switch (direction) {
-				case UP -> Direction.SOUTH; case DOWN -> Direction.NORTH;
-				case NORTH -> Direction.UP; case SOUTH -> Direction.DOWN;
-				default -> direction;
-			};
-			case NORTH -> switch (direction) {
-				case UP -> Direction.NORTH; case DOWN -> Direction.SOUTH;
-				case NORTH -> Direction.DOWN; case SOUTH -> Direction.UP;
-				default -> direction;
-			};
-		};
-	}
-
-	private static void box(VertexConsumer out, PoseStack.Pose pose, TextureAtlasSprite defaultSprite,
-			float x0, float y0, float z0, float x1, float y1, float z1, int color, int light,
-			@Nullable Direction alternateFace, @Nullable TextureAtlasSprite alternateSprite,
-			@Nullable Direction omittedFace) {
-		if (omittedFace != Direction.DOWN) face(out,pose, sprite(Direction.DOWN,defaultSprite,alternateFace,alternateSprite),
-				x0,y0,z1, x1,y0,z1, x1,y0,z0, x0,y0,z0, color,light,0,-1,0);
-		if (omittedFace != Direction.UP) face(out,pose, sprite(Direction.UP,defaultSprite,alternateFace,alternateSprite),
-				x0,y1,z0, x1,y1,z0, x1,y1,z1, x0,y1,z1, color,light,0,1,0);
-		face(out,pose, sprite(Direction.NORTH,defaultSprite,alternateFace,alternateSprite),
-				x1,y0,z0, x1,y1,z0, x0,y1,z0, x0,y0,z0, color,light,0,0,-1);
-		face(out,pose, sprite(Direction.SOUTH,defaultSprite,alternateFace,alternateSprite),
-				x0,y0,z1, x0,y1,z1, x1,y1,z1, x1,y0,z1, color,light,0,0,1);
-		face(out,pose, sprite(Direction.WEST,defaultSprite,alternateFace,alternateSprite),
-				x0,y0,z0, x0,y1,z0, x0,y1,z1, x0,y0,z1, color,light,-1,0,0);
-		face(out,pose, sprite(Direction.EAST,defaultSprite,alternateFace,alternateSprite),
-				x1,y0,z1, x1,y1,z1, x1,y1,z0, x1,y0,z0, color,light,1,0,0);
-	}
-
-	private static TextureAtlasSprite sprite(Direction face, TextureAtlasSprite fallback,
-			@Nullable Direction alternateFace, @Nullable TextureAtlasSprite alternate) {
-		return face == alternateFace && alternate != null ? alternate : fallback;
-	}
-
-	private static void face(VertexConsumer out, PoseStack.Pose pose, TextureAtlasSprite sprite,
-			float ax,float ay,float az,float bx,float by,float bz,float cx,float cy,float cz,
-			float dx,float dy,float dz,int color,int light,float nx,float ny,float nz) {
-		vertex(out,pose,ax,ay,az,sprite.getU0(),sprite.getV1(),color,light,nx,ny,nz);
-		vertex(out,pose,bx,by,bz,sprite.getU0(),sprite.getV0(),color,light,nx,ny,nz);
-		vertex(out,pose,cx,cy,cz,sprite.getU1(),sprite.getV0(),color,light,nx,ny,nz);
-		vertex(out,pose,dx,dy,dz,sprite.getU1(),sprite.getV1(),color,light,nx,ny,nz);
-	}
-
-	private static void vertex(VertexConsumer out, PoseStack.Pose pose, float x,float y,float z,
-			float u,float v,int color,int light,float nx,float ny,float nz) {
-		out.addVertex(pose,x,y,z).setUv(u,v).setColor(color)
-				.setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose,nx,ny,nz);
-	}
-
-	private static TextureAtlasSprite atlas(Identifier id) {
-		return Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(id);
-	}
-	private static Identifier sprite(String path) {
-		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, path);
-	}
-	private static PoseStack copy(PoseStack source) {
-		PoseStack copy = new PoseStack();
-		copy.last().set(source.last());
-		return copy;
-	}
-
-	public static final class State extends BlockEntityRenderState {
-		private Direction facing = Direction.UP;
-		private Direction input = Direction.DOWN;
-	}
+/** V33a RelayRenderer: full-bright terrain geometry and ordinary translucent crystal/connectivity. */
+public final class RenderLumenRelay implements BlockEntityRenderer<TileEntityLumenRelay,RenderLumenRelay.State> {
+    private static final Identifier STONE=sprite("block/pylon/block_0"), CRYSTAL=sprite("block/crystal/crystal_outline"),
+            FRAME=sprite("block/icons/glowframe2"), DOT=sprite("block/icons/glowframe_dot2");
+    public RenderLumenRelay(BlockEntityRendererProvider.Context context) {}
+    @Override public State createRenderState(){return new State();}
+    @Override public void extractRenderState(TileEntityLumenRelay tile,State state,float partial,Vec3 camera,
+            ModelFeatureRenderer.@Nullable CrumblingOverlay breaking) {
+        BlockEntityRenderer.super.extractRenderState(tile,state,partial,camera,breaking);
+        state.facing=tile.getBlockState().getValue(BlockLumenRelay.FACING);
+        state.input=tile.getInput();
+    }
+    @Override public void submit(State state,PoseStack pose,SubmitNodeCollector collector,CameraRenderState camera) {
+        var stone=body(state.facing,false,atlas(STONE));
+        var crystal=body(state.facing,true,atlas(CRYSTAL));
+        var connectivity=connectivity(state.facing,state.input,atlas(FRAME),atlas(DOT));
+        collector.submitCustomGeometry(pose,EntityLighting.FULL_BRIGHT.cutout(TextureAtlas.LOCATION_BLOCKS,true),
+                (captured,out)->emit(stone,captured,out,0xffffffff));
+        // Original ISBRH pass 1 inherits standard terrain alpha blending, never ADDITIVEDARK.
+        var translucent=EntityLighting.FULL_BRIGHT.translucent(TextureAtlas.LOCATION_BLOCKS,true);
+        collector.submitCustomGeometry(pose,translucent,(captured,out)->emit(crystal,captured,out,0xd4ffffff));
+        collector.submitCustomGeometry(pose,translucent,(captured,out)->emit(connectivity,captured,out,0xffffffff));
+    }
+    private record Vertex(double x,double y,double z,double u,double v) {}
+    private static List<Vertex> body(Direction dir,boolean crystal,TextureAtlasSprite sprite) {
+        double minx=0,miny=0,minz=0,w=.125;
+        boolean negative=dir.getStepX()+dir.getStepY()+dir.getStepZ()<0;
+        double h=negative?.25:.3125;
+        double u=sprite.getU0(),v=sprite.getV0(),du=sprite.getU1(),dv=sprite.getV1();
+        var vertices=new ArrayList<Vertex>();
+        if(!crystal) {
+            vertices.add(new Vertex(minx,miny,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny,minz,du,v));
+            vertices.add(new Vertex(minx+w*2,miny,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx,miny,minz+w*2,u,dv));
+            vertices.add(new Vertex(minx,miny+h*2,minz+w*2,u,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz,du,v));
+            vertices.add(new Vertex(minx,miny+h*2,minz,u,v));
+            vertices.add(new Vertex(minx,miny+h,minz+w*2,u,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz,du,v));
+            vertices.add(new Vertex(minx,miny+h,minz,u,v));
+            vertices.add(new Vertex(minx,miny,minz+w*2,u,dv));
+            vertices.add(new Vertex(minx+w*2,miny,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz+w*2,du,v));
+            vertices.add(new Vertex(minx,miny+h,minz+w*2,u,v));
+            vertices.add(new Vertex(minx,miny+h,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz,du,v));
+            vertices.add(new Vertex(minx+w*2,miny,minz,du,dv));
+            vertices.add(new Vertex(minx,miny,minz,u,dv));
+            vertices.add(new Vertex(minx,miny,minz,u,dv));
+            vertices.add(new Vertex(minx,miny,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx,miny+h,minz+w*2,du,v));
+            vertices.add(new Vertex(minx,miny+h,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz+w*2,du,v));
+            vertices.add(new Vertex(minx+w*2,miny,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny,minz,u,dv));
+            vertices.add(new Vertex(minx,miny+h*2,minz+w*2,u,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz,du,v));
+            vertices.add(new Vertex(minx,miny+h*2,minz,u,v));
+            vertices.add(new Vertex(minx,miny+h,minz+w*2,u,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz+w*2,du,v));
+            vertices.add(new Vertex(minx,miny+h*2,minz+w*2,u,v));
+            vertices.add(new Vertex(minx,miny+h*2,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz,du,v));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz,du,dv));
+            vertices.add(new Vertex(minx,miny+h,minz,u,dv));
+            vertices.add(new Vertex(minx,miny+h,minz,u,dv));
+            vertices.add(new Vertex(minx,miny+h,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx,miny+h*2,minz+w*2,du,v));
+            vertices.add(new Vertex(minx,miny+h*2,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz+w*2,du,v));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h,minz,u,dv));
+        } else {
+            vertices.add(new Vertex(minx,miny+h*2+w*2,minz+w*2,u,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2+w*2,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2+w*2,minz,du,v));
+            vertices.add(new Vertex(minx,miny+h*2+w*2,minz,u,v));
+            vertices.add(new Vertex(minx,miny+h*2,minz+w*2,u,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2+w*2,minz+w*2,du,v));
+            vertices.add(new Vertex(minx,miny+h*2+w*2,minz+w*2,u,v));
+            vertices.add(new Vertex(minx,miny+h*2+w*2,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h*2+w*2,minz,du,v));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz,du,dv));
+            vertices.add(new Vertex(minx,miny+h*2,minz,u,dv));
+            vertices.add(new Vertex(minx,miny+h*2,minz,u,dv));
+            vertices.add(new Vertex(minx,miny+h*2,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx,miny+h*2+w*2,minz+w*2,du,v));
+            vertices.add(new Vertex(minx,miny+h*2+w*2,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h*2+w*2,minz,u,v));
+            vertices.add(new Vertex(minx+w*2,miny+h*2+w*2,minz+w*2,du,v));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz+w*2,du,dv));
+            vertices.add(new Vertex(minx+w*2,miny+h*2,minz,u,dv));
+        }
+        // Match TessellatorVertexList's reflections, origin swaps, and winding reversals.
+        if(negative) {
+            vertices.replaceAll(p->new Vertex(p.x,1-p.y,p.z,p.u,p.v));
+            Collections.reverse(vertices);
+        }
+        if(dir.getStepX()!=0) {
+            vertices.replaceAll(p->new Vertex(p.y-.5,p.x+.5-w,p.z-w,p.u,p.v));
+            Collections.reverse(vertices);
+        } else if(dir.getStepZ()!=0) {
+            vertices.replaceAll(p->new Vertex(p.x-w,p.z+.5-w,p.y-.5,p.u,p.v));
+            Collections.reverse(vertices);
+        } else vertices.replaceAll(p->new Vertex(p.x-w,p.y,p.z-w,p.u,p.v));
+        vertices.replaceAll(p->new Vertex(p.x+.5,p.y,p.z+.5,p.u,p.v));
+        return List.copyOf(vertices);
+    }
+    private static List<Vertex> connectivity(Direction facing,Direction input,TextureAtlasSprite frame,TextureAtlasSprite dot) {
+        double w=.1875,h=facing.getStepX()+facing.getStepY()+facing.getStepZ()<0?.125:.25;
+        var vertices=new ArrayList<Vertex>();
+        for(var dir:Direction.values()) {
+            var sprite=dir==input?dot:frame;
+            double u=sprite.getU0(),v=sprite.getV0(),du=sprite.getU1(),dv=sprite.getV1();
+            if(dir==Direction.EAST) {
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5-w,u,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5-w,du,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5+w,du,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5+w,u,dv));
+            }
+            if(dir==Direction.WEST) {
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5+w,u,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5+w,du,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5-w,du,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5-w,u,v));
+            }
+            if(dir==Direction.NORTH) {
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5-w,u,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5-w,du,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5-w,du,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5-w,u,dv));
+            }
+            if(dir==Direction.SOUTH) {
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5+w,u,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5+w,du,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5+w,du,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5+w,u,v));
+            }
+            if(dir==Direction.DOWN) {
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5-w,u,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5-w,du,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5+w,du,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5-w,h*facing.getStepZ()+0.5+w,u,dv));
+            }
+            if(dir==Direction.UP) {
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5+w,u,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5+w,du,dv));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5+w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5-w,du,v));
+            vertices.add(new Vertex(h*facing.getStepX()+0.5-w,h*facing.getStepY()+0.5+w,h*facing.getStepZ()+0.5-w,u,v));
+            }
+        }
+        return List.copyOf(vertices);
+    }
+    private static void emit(List<Vertex> vertices,PoseStack.Pose pose,VertexConsumer out,int color) {
+        for(var p:vertices) out.addVertex(pose,(float)p.x,(float)p.y,(float)p.z)
+                .setUv((float)p.u,(float)p.v).setColor(color).setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose,0,1,0);
+    }
+    private static Identifier sprite(String path){return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,path);}
+    private static TextureAtlasSprite atlas(Identifier id){return Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(id);}
+    public static final class State extends BlockEntityRenderState {
+        private Direction facing=Direction.UP,input=Direction.DOWN;
+    }
 }

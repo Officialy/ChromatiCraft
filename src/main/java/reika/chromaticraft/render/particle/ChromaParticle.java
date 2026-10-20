@@ -33,26 +33,34 @@ import java.util.Random;
 /** Reusable V33a ChromatiCraft particle families on the 26.3 particle pipeline. */
 public abstract class ChromaParticle extends SingleQuadParticle {
 
-    // Translucent=true routes these through 26.3's particle target, so rune/pylon glows participate
-    // in the water/cloud transparency composition rather than being painted into main too early.
-    // Their pipelines depth-test against the scene but, like V33a's particle renderer, do not write
-    // depth; overlapping glow quads therefore accumulate instead of masking one another.
-    private static final Layer ADDITIVE_TERRAIN = new Layer(
-            true, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
-            ChromaRenderPipelines.LEGACY_ADDITIVE_PARTICLE);
-    private static final Layer ADDITIVE_LASER_SHEET = new Layer(true,
-            Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/particle/64x.png"),
-            ChromaRenderPipelines.ADDITIVE_PARTICLE);
-    private static final Layer ADDITIVE_GLOBE_SHEET = new Layer(true,
-            Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "textures/particle/16x.png"),
-            ChromaRenderPipelines.ADDITIVE_PARTICLE);
+    // Declare through DragonAPI's native particle profiles: screen layers have their own
+    // forward phase, while ordinary alpha particles supply all three native OIT stages.
+    private static final Layer ADDITIVE_TERRAIN = layer(
+            net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
+            ChromaRenderPipelines.LEGACY_ADDITIVE_PARTICLE,true,true);
+    private static final Layer ADDITIVE_LASER_SHEET = layer(
+            Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"textures/particle/64x.png"),
+            ChromaRenderPipelines.ADDITIVE_PARTICLE,true,true);
+    private static final Layer ADDITIVE_GLOBE_SHEET = layer(
+            Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"textures/particle/16x.png"),
+            ChromaRenderPipelines.ADDITIVE_PARTICLE,true,true);
+    private static final Layer TRANSLUCENT_TERRAIN = layer(
+            net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
+            ChromaRenderPipelines.LEGACY_TRANSLUCENT_PARTICLE,false,true);
+    private static final Layer ADDITIVE_TERRAIN_NO_DEPTH = layer(
+            net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
+            ChromaRenderPipelines.LEGACY_ADDITIVE_PARTICLE_NO_DEPTH,true,false);
 
-    private static final Layer TRANSLUCENT_TERRAIN = new Layer(
-            true, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
-            ChromaRenderPipelines.LEGACY_TRANSLUCENT_PARTICLE);
-    private static final Layer ADDITIVE_TERRAIN_NO_DEPTH = new Layer(
-            true, net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS,
-            ChromaRenderPipelines.LEGACY_ADDITIVE_PARTICLE_NO_DEPTH);
+    private static Layer layer(Identifier texture,com.mojang.renderpearl.api.pipeline.RenderPipeline source,
+            boolean additive,boolean depth) {
+        int mask=reika.dragonapi.instantiable.rendering.ReikaParticleEngine.RenderModeFlags.ALPHA.mask();
+        // V33a EntityBlurFX clips only additive sprites; LaserFX/GlobeFX disable alpha clipping.
+        if(additive && source!=ChromaRenderPipelines.ADDITIVE_PARTICLE)
+            mask|=reika.dragonapi.instantiable.rendering.ReikaParticleEngine.RenderModeFlags.ALPHACLIP.mask();
+        if(additive)mask|=reika.dragonapi.instantiable.rendering.ReikaParticleEngine.RenderModeFlags.ADDITIVE.mask();
+        if(depth)mask|=reika.dragonapi.instantiable.rendering.ReikaParticleEngine.RenderModeFlags.DEPTH.mask();
+        return reika.dragonapi.client.CustomParticleLayers.map(new Layer(false,texture,source),texture,mask);
+    }
 
     private final boolean additive;
     /** V33a {@code setNoDepthTest()}. */
