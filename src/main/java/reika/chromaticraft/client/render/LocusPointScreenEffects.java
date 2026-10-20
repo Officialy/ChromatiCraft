@@ -66,9 +66,7 @@ public final class LocusPointScreenEffects {
 		double distance = Math.sqrt(distSq);
 		if (distance > 128)
 			return;
-		// DIMCORE is a world-space locus marker, not a surface-only bloom. Keep the shader emitter
-		// alive through terrain just as the core geometry is; Aura Locus deliberately retains V33a's
-		// line-of-sight gate below.
+        if (!MonumentRitualEffects.isRunning() && !hasLineOfSight(core,player,x,y,z)) return;
 		float intensity = distance <= 32 ? 1F : (float)(1 - (distance - 32) / 96D);
 		CrystalElement element = core.getColor();
 		POINTS.add(new Point(new Vec3(x, y, z), distSq, Math.max(0, intensity),

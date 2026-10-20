@@ -748,6 +748,7 @@ public final class ChromaRenderPipelines {
 		event.registerPipeline(UA_ZONE);
 		event.registerPipeline(ARTEALLOY);
 		event.registerPipeline(AURA_LOCUS_LINES);
+        LocusRendering.register(event);
         event.registerPipeline(ADDITIVE_SKY_SPRITE);
         assignIrisPrograms();
     }

@@ -1,26 +1,19 @@
 package reika.chromaticraft.render.tesr;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
-import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
-import net.minecraft.client.renderer.texture.TextureAtlas;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.render.GlowKnot;
 import reika.chromaticraft.tileentity.aoe.TileEntityAuraPoint;
 import reika.dragonapi.libraries.rendering.ReikaColorAPI;
@@ -28,13 +21,26 @@ import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-/** Full 26.2 submit port of V33a's Aura Locus renderer. */
+/** 26.3 submit port of V33a's Aura Locus renderer. */
+@net.neoforged.fml.common.EventBusSubscriber(modid="chromaticraft",value=net.neoforged.api.distmarker.Dist.CLIENT)
 public final class RenderAuraPoint implements
 		BlockEntityRenderer<TileEntityAuraPoint, RenderAuraPoint.State> {
 
 	private static final Identifier STAR_FLARE = sprite("starflare");
-	private static final Identifier FADE = sprite("fade");
-	private final Map<TileEntityAuraPoint, KnotState> knots = new WeakHashMap<>();
+		private static final Map<TileEntityAuraPoint, KnotState> knots = new WeakHashMap<>();
+
+    /** Keep already-created client knots moving while frustum-culled, at the original six steps/tick. */
+    @net.neoforged.bus.api.SubscribeEvent
+    public static void tickKnots(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
+        var minecraft=Minecraft.getInstance();
+        if(minecraft.isPaused())return;
+        var iterator=knots.entrySet().iterator();
+        while(iterator.hasNext()) {
+            var entry=iterator.next();var tile=entry.getKey();
+            if(tile.isRemoved() || tile.getLevel()!=minecraft.level) {iterator.remove();continue;}
+            if(tile.hasLevel())entry.getValue().advance(tile.getTicksExisted());
+        }
+    }
 
 	public RenderAuraPoint(BlockEntityRendererProvider.Context context) {}
 
@@ -43,86 +49,40 @@ public final class RenderAuraPoint implements
 		return new State();
 	}
 
-	@Override
-	public void extractRenderState(TileEntityAuraPoint point, State state, float partialTick,
-			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
-		BlockEntityRenderer.super.extractRenderState(point, state, partialTick, cameraPosition,
-				breakProgress);
-		state.color = 0xff000000 | ReikaColorAPI.getModifiedSat(point.getRenderColor(), 0.875F);
-		state.pvp = point.doPvP();
-		state.age = point.getTicksExisted() + partialTick;
-		state.frame = (int)(System.currentTimeMillis() / 250 % 80);
-		reika.chromaticraft.client.render.LocusPointScreenEffects.addAuraPoint(point);
-		KnotState knot = knots.computeIfAbsent(point, ignored -> new KnotState());
-		knot.advance(point.getTicksExisted());
-		state.knot = knot.knot;
-	}
-
-	@Override
-	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
-			CameraRenderState camera) {
-		// RenderLocusPoint's inherited three animated ADDITIVE2 layers.
-		poseStack.pushPose();
-		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.rotate(camera.orientation);
-		RenderDimensionCore.submitLayers(poseStack, collector, state.color & 0xffffff,
-				state.frame, true);
-		poseStack.popPose();
-
-		if (state.pvp) {
-			float scale = (float)(3.5 + Math.sin(state.age / 32D));
-			this.submitBillboard(poseStack, collector, camera, STAR_FLARE, scale, state.color, 0);
-		}
-
-		if (state.knot != null) {
-			state.knot.submit(collector, poseStack, state.color, true);
-			int alpha = 160;
-			int faded = alpha << 24 | ReikaColorAPI.getColorWithBrightnessMultiplier(
-					state.color & 0xffffff, alpha / 255F);
-			this.submitBillboard(poseStack, collector, camera, FADE, 1.25F, faded, 0.05F);
-		}
-	}
-
-	private void submitBillboard(PoseStack poseStack, SubmitNodeCollector collector,
-			CameraRenderState camera, Identifier spriteId, float scale, int color, float z) {
-		TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
-				.getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
-		poseStack.pushPose();
-		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.rotate(camera.orientation);
-		PoseStack renderPose = copy(poseStack);
-		submitAfterTerrain(poseStack, collector,
-				ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
-				(ignored, vertices) -> quad(renderPose.last(), vertices, sprite, scale, z, color));
-		poseStack.popPose();
-	}
-
-	private static void quad(PoseStack.Pose pose, VertexConsumer vertices,
-			TextureAtlasSprite sprite, float scale, float z, int color) {
-		vertices.addVertex(pose, -scale, -scale, z).setUv(sprite.getU0(), sprite.getV1())
-				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		vertices.addVertex(pose, scale, -scale, z).setUv(sprite.getU1(), sprite.getV1())
-				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		vertices.addVertex(pose, scale, scale, z).setUv(sprite.getU1(), sprite.getV0())
-				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		vertices.addVertex(pose, -scale, scale, z).setUv(sprite.getU0(), sprite.getV0())
-				.setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-	}
-
-	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
-			net.minecraft.client.renderer.rendertype.RenderType renderType,
-			SubmitNodeCollector.CustomGeometryRenderer renderer) {
-		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
-				poseStack.last().copy(), renderType, renderer);
-		collector.order(0)
-				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
-	}
-
-	private static PoseStack copy(PoseStack source) {
-		PoseStack copy = new PoseStack();
-		copy.last().set(source.last());
-		return copy;
-	}
+    @Override
+    public void extractRenderState(TileEntityAuraPoint point,State state,float partialTick,Vec3 cameraPosition,
+            ModelFeatureRenderer.@Nullable CrumblingOverlay breaking) {
+        BlockEntityRenderer.super.extractRenderState(point,state,partialTick,cameraPosition,breaking);
+        state.coreColor=point.getRenderColor();
+        state.color=0xff000000|ReikaColorAPI.getModifiedSat(state.coreColor,.875F);
+        state.pvp=point.doPvP();state.age=point.getTicksExisted()+partialTick;
+        state.frame=(int)(System.currentTimeMillis()/250%80);state.inWorld=point.hasLevel();
+        state.ritual=reika.chromaticraft.client.render.MonumentRitualEffects.isRunning();
+        double dx=point.getBlockPos().getX()+.5-cameraPosition.x,dy=point.getBlockPos().getY()+.5-cameraPosition.y,dz=point.getBlockPos().getZ()+.5-cameraPosition.z;
+        state.roll=RenderDimensionCore.sourceRoll(dx,dz);state.fadeYaw=state.roll;
+        state.fadePitch=(float)Math.toDegrees(Math.atan2(dy,Math.hypot(dx,dz)));
+        if(state.inWorld)reika.chromaticraft.client.render.LocusPointScreenEffects.addAuraPoint(point);
+        KnotState knot=knots.computeIfAbsent(point,ignored->new KnotState());
+        if(state.inWorld)knot.advance(point.getTicksExisted());else knot.knot.update();
+        state.knot=knot.knot.snapshot();
+    }
+    @Override
+    public void submit(State state,PoseStack pose,SubmitNodeCollector collector,CameraRenderState camera) {
+        RenderDimensionCore.submitCore(pose,collector,state.coreColor,state.frame,state.inWorld,state.ritual,camera.yRot,camera.xRot,state.roll);
+        if(state.pvp && state.inWorld) {
+            float scale=(float)(3.5+Math.sin(state.age/32D));
+            var sprite=Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(STAR_FLARE);
+            pose.pushPose();pose.translate(.5,.5,.5);
+            pose.rotate(com.mojang.math.Axis.YP.rotationDegrees(-camera.yRot));pose.rotate(com.mojang.math.Axis.XP.rotationDegrees(camera.xRot));
+            reika.chromaticraft.render.LocusRendering.quad(pose,collector,reika.chromaticraft.render.LocusRendering.screen(!state.ritual),true,
+                    -scale,-scale,scale,scale,0,sprite.getU0(),sprite.getV0(),sprite.getU1(),sprite.getV1(),state.color,reika.chromaticraft.render.LocusRendering.CORE_LIGHT);
+            pose.popPose();
+        }
+        if(state.knot!=null)GlowKnot.submit(state.knot,collector,pose,state.color,state.inWorld,state.inWorld && !state.ritual,
+                state.inWorld?1:1.5F,state.fadeYaw,state.fadePitch,state.lightCoords);
+        // CHROMA-PORT: GuiMachineDescription.runningRender's 2.5px/+0.1875 knot context is supplied
+        // through GlowKnot.submit when that excluded legacy guide renderer is ported.
+    }
 
 	private static Identifier sprite(String name) {
 		return Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "block/icons/" + name);
@@ -145,10 +105,13 @@ public final class RenderAuraPoint implements
 
 	public static final class State extends BlockEntityRenderState {
 		private int color = 0xffffffff;
-		private int frame;
+		private int coreColor;
+        private boolean inWorld,ritual;
+        private float roll,fadeYaw,fadePitch;
+        private int frame;
 		private float age;
 		private boolean pvp;
-		private @Nullable GlowKnot knot;
+		private GlowKnot.@Nullable Frame knot;
 	}
 
 	private static final class KnotState {

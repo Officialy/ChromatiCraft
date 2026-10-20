@@ -34,10 +34,7 @@ public final class DimensionCoreItemRenderer implements NoDataSpecialModelRender
 		poseStack.pushPose();
 		poseStack.translate(0.5, 0.5, 0.5);
 		poseStack.rotate(Axis.YP.rotationDegrees(45));
-		// V33a's inventory transform applies -30 degrees before the old renderer's inverted entity
-		// model coordinate system. In the modern item pose that inversion is absent, so the equivalent
-		// visible tilt is +30 degrees.
-		poseStack.rotate(Axis.XP.rotationDegrees(30));
+        poseStack.rotate(Axis.XP.rotationDegrees(-30));
 		RenderDimensionCore.submitLayers(poseStack, collector, element.color(),
 				(int)(System.currentTimeMillis() / 250 % 80), false);
 		poseStack.popPose();

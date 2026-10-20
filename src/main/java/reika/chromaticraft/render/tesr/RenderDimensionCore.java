@@ -1,25 +1,18 @@
 package reika.chromaticraft.render.tesr;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
-import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
-import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
-import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.chromaticraft.tileentity.technical.TileEntityDimensionCore;
-import reika.dragonapi.libraries.rendering.ReikaColorAPI;
 
 /** Modern submit port of V33a RenderLocusPoint's three-layer Dimension Core glow knot. */
 public final class RenderDimensionCore implements
@@ -35,85 +28,36 @@ public final class RenderDimensionCore implements
 		return new State();
 	}
 
-	@Override
-	public void extractRenderState(TileEntityDimensionCore core, State state, float partialTick,
-			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
-		BlockEntityRenderer.super.extractRenderState(core, state, partialTick, cameraPosition,
-				breakProgress);
-		state.color = core.getRenderColor();
-		state.frame = (int)(System.currentTimeMillis() / 250 % 80);
-		state.ritual = reika.chromaticraft.client.render.MonumentRitualEffects.isRunning();
-		reika.chromaticraft.client.render.LocusPointScreenEffects.addDimensionCore(core);
-	}
-
-	@Override
-	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
-			CameraRenderState camera) {
-		poseStack.pushPose();
-		poseStack.translate(0.5, 0.5, 0.5);
-		poseStack.rotate(camera.orientation);
-		// Dimension cores remain supernatural landmarks through terrain outside the monument ritual as
-		// well. Their matching DIMCORE post effect is likewise intentionally not LOS-culled.
-		submitLayers(poseStack, collector, state.color, state.frame, true, true);
-		poseStack.popPose();
-	}
-
-	/** Shared by the block and its special item renderer; V33a uses the same three layers for both. */
-	public static void submitLayers(PoseStack poseStack, SubmitNodeCollector collector,
-			int baseColor, int frame, boolean afterTerrain) {
-		submitLayers(poseStack, collector, baseColor, frame, afterTerrain, false);
-	}
-
-	private static void submitLayers(PoseStack poseStack, SubmitNodeCollector collector,
-			int baseColor, int frame, boolean afterTerrain, boolean throughWall) {
-		float u = frame % 8 / 8F;
-		float v = frame / 8 / 10F;
-		for (int layer = 0; layer < 3; layer++) {
-			int alpha = 255 - layer * 64;
-			float scale = 1 - layer * 0.25F;
-			int rgb = ReikaColorAPI.getColorWithBrightnessMultiplier(baseColor, alpha / 255F);
-			int color = alpha << 24 | rgb;
-			PoseStack layerPose = copy(poseStack);
-			layerPose.scale(scale, scale, scale);
-			SubmitNodeCollector.CustomGeometryRenderer geometry = (ignored, out) -> quad(
-					layerPose.last(), out, color, u, v, u + 1F / 8F, v + 1F / 10F);
-			// The retained sheet is opaque RGB: its black background was transparency under V33a's
-			// additive blend. The legacy shader derives coverage from luminance for modern item targets.
-			RenderType type = throughWall
-					? ChromaRenderPipelines.legacyAdditiveSpriteThroughWall(TEXTURE)
-					: ChromaRenderPipelines.legacyAdditiveSprite(TEXTURE);
-			if (afterTerrain)
-				submitAfterTerrain(layerPose, collector, type, geometry);
-			else
-				collector.submitCustomGeometry(layerPose, type, geometry);
-		}
-	}
-
-	private static void quad(PoseStack.Pose pose, VertexConsumer out, int color,
-			float u, float v, float du, float dv) {
-		out.addVertex(pose, -1, -1, 0).setColor(color).setUv(u, v)
-				.setLight(LightCoordsUtil.FULL_BRIGHT);
-		out.addVertex(pose, 1, -1, 0).setColor(color).setUv(du, v)
-				.setLight(LightCoordsUtil.FULL_BRIGHT);
-		out.addVertex(pose, 1, 1, 0).setColor(color).setUv(du, dv)
-				.setLight(LightCoordsUtil.FULL_BRIGHT);
-		out.addVertex(pose, -1, 1, 0).setColor(color).setUv(u, dv)
-				.setLight(LightCoordsUtil.FULL_BRIGHT);
-	}
-
-	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
-			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
-		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
-				poseStack.last().copy(), renderType, renderer);
-		collector.order(0)
-				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
-	}
-
-	private static PoseStack copy(PoseStack source) {
-		PoseStack copy = new PoseStack();
-		copy.last().set(source.last());
-		return copy;
-	}
+    @Override
+    public void extractRenderState(TileEntityDimensionCore core,State state,float partialTick,Vec3 cameraPosition,
+            ModelFeatureRenderer.@Nullable CrumblingOverlay breaking) {
+        BlockEntityRenderer.super.extractRenderState(core,state,partialTick,cameraPosition,breaking);
+        state.color=core.getRenderColor();state.frame=(int)(System.currentTimeMillis()/250%80);
+        state.ritual=reika.chromaticraft.client.render.MonumentRitualEffects.isRunning();
+        state.inWorld=core.hasLevel();
+        state.roll=sourceRoll(core.getBlockPos().getX()+.5-cameraPosition.x,core.getBlockPos().getZ()+.5-cameraPosition.z);
+        if(state.inWorld)reika.chromaticraft.client.render.LocusPointScreenEffects.addDimensionCore(core);
+    }
+    public static float sourceRoll(double dx,double dz) {return (float)(180+Math.toDegrees(Math.atan2(dx,dz)));}
+    @Override
+    public void submit(State state,PoseStack pose,SubmitNodeCollector collector,CameraRenderState camera) {
+        submitCore(pose,collector,state.color,state.frame,state.inWorld,state.ritual,camera.yRot,camera.xRot,state.roll);
+    }
+    /** Full inherited source transform; detached callers can normalize its offset in their item adapter. */
+    public static void submitCore(PoseStack pose,SubmitNodeCollector collector,int color,int frame,boolean world,
+            boolean ritual,float yaw,float pitch,float roll) {
+        pose.pushPose();pose.translate(.5,.5,.5);
+        if(world) {pose.rotate(com.mojang.math.Axis.YP.rotationDegrees(-yaw));pose.rotate(com.mojang.math.Axis.XP.rotationDegrees(pitch));}
+        else {pose.translate(.55,.5,.5);pose.rotate(com.mojang.math.Axis.YP.rotationDegrees(45));pose.rotate(com.mojang.math.Axis.XP.rotationDegrees(-30));}
+        reika.chromaticraft.render.LocusRendering.coreLayers(pose,collector,color,frame,world?roll:0,world,!ritual,
+                reika.chromaticraft.render.LocusRendering.CORE_LIGHT);
+        pose.popPose();
+    }
+    /** Layers for a caller that has already established its item billboard pose. */
+    public static void submitLayers(PoseStack pose,SubmitNodeCollector collector,int color,int frame,boolean world) {
+        reika.chromaticraft.render.LocusRendering.coreLayers(pose,collector,color,frame,0,world,true,
+                reika.chromaticraft.render.LocusRendering.CORE_LIGHT);
+    }
 
 	@Override
 	public AABB getRenderBoundingBox(TileEntityDimensionCore core) {
@@ -134,5 +78,7 @@ public final class RenderDimensionCore implements
 		private int color;
 		private int frame;
 		private boolean ritual;
+        private boolean inWorld;
+        private float roll;
 	}
 }

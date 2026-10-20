@@ -12,8 +12,6 @@ package reika.chromaticraft.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
 import org.joml.Vector3f;
 import reika.dragonapi.instantiable.data.immutable.DecimalPosition;
 import reika.dragonapi.instantiable.math.Spline;
@@ -42,56 +40,54 @@ public final class GlowKnot {
                     RAND.nextDouble() * 360, size));
     }
 
-    private static void renderPoints(PoseStack.Pose pose, VertexConsumer vertices,
-                                     List<DecimalPosition> points, int color, int alpha) {
-        int red = color >> 16 & 255;
-        int green = color >> 8 & 255;
-        int blue = color & 255;
-        Vector3f normal = new Vector3f();
-        if (points.size() < 2)
-            return;
-        // RenderTypes.lines() consumes independent vertex pairs, unlike V33a's GL_LINE_STRIP.
-        // Pair every adjacent sample, then close the final sample back to the first. The previous
-        // port emitted (sample, first) for every sample, which turned the locus into a radial web.
-        for (int i = 1; i < points.size(); i++)
-            addSegment(pose, vertices, points.get(i - 1), points.get(i), red, green, blue, alpha,
-                    normal);
-        addSegment(pose, vertices, points.getLast(), points.getFirst(), red, green, blue, alpha,
-                normal);
+    /** A frame owns its samples, independently of the living spline and reusable render state. */
+    public record Frame(List<DecimalPosition> points) {
+        public Frame {points=List.copyOf(points);}
     }
+    public Frame snapshot() {return new Frame(spline.get(32,true));}
 
-    private static void addSegment(PoseStack.Pose pose, VertexConsumer vertices,
-                                   DecimalPosition first, DecimalPosition second,
-                                   int red, int green, int blue, int alpha, Vector3f normal) {
-        vertices.addVertex(pose, (float) (0.5 + first.xCoord()), (float) (0.5 + first.yCoord()),
-                (float) (0.5 + first.zCoord())).setNormal(pose, normal)
-                .setColor(red, green, blue, alpha).setLineWidth(2F);
-        vertices.addVertex(pose, (float) (0.5 + second.xCoord()), (float) (0.5 + second.yCoord()),
-                (float) (0.5 + second.zCoord())).setNormal(pose, normal)
-                .setColor(red, green, blue, alpha).setLineWidth(2F);
-    }
-
-    public void submit(SubmitNodeCollector collector, PoseStack stack, int color,
-                       boolean inWorld) {
-        List<DecimalPosition> points = spline.get(32, true);
-        int alpha = color >>> 24;
-        this.submitLine(collector, stack, points, color, alpha);
-        if (inWorld) {
-            this.submitLine(collector, stack, points, color, alpha / 4);
-            this.submitLine(collector, stack, points, color, alpha / 4);
+    /** Full source spline and fade: default-alpha widths 1/5/10, followed by the screen billboard. */
+    public static void submit(Frame frame,SubmitNodeCollector collector,PoseStack pose,int color,
+            boolean world,boolean depthTest,float baseWidth,float fadeYaw,float fadePitch,int light) {
+        submitLine(frame,collector,pose,color,baseWidth,world,depthTest,light);
+        if(world) {
+            int faint=(color&0xffffff)|((color>>>24)/4)<<24;
+            submitLine(frame,collector,pose,faint,5,world,depthTest,light);
+            submitLine(frame,collector,pose,faint,10,world,depthTest,light);
         }
+        var sprite=net.minecraft.client.Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(net.minecraft.data.AtlasIds.BLOCKS)
+                .getSprite(reika.chromaticraft.registry.ChromaIcons.FADE.getIcon());
+        int alpha=160;
+        int faded=alpha<<24|reika.dragonapi.libraries.rendering.ReikaColorAPI.getColorWithBrightnessMultiplier(color&0xffffff,alpha/255F);
+        pose.pushPose();pose.translate(.5,.5,.5);
+        if(world) {pose.rotate(com.mojang.math.Axis.YP.rotationDegrees(fadeYaw));pose.rotate(com.mojang.math.Axis.XP.rotationDegrees(fadePitch));}
+        LocusRendering.quad(pose,collector,LocusRendering.screen(depthTest),world,-1.25F,-1.25F,1.25F,1.25F,.05F,
+                sprite.getU0(),sprite.getV0(),sprite.getU1(),sprite.getV1(),faded,light);
+        pose.popPose();
     }
-
-    private void submitLine(SubmitNodeCollector collector, PoseStack stack,
-                            List<DecimalPosition> points, int color, int alpha) {
-        PoseStack renderPose = new PoseStack();
-        renderPose.last().set(stack.last());
-        SubmitNodeCollector.CustomGeometryRenderer geometry = (ignored, vertices) ->
-                renderPoints(renderPose.last(), vertices, points, color, alpha);
-        CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
-                stack.last().copy(), ChromaRenderPipelines.auraLocusLines(), geometry);
-        collector.order(0)
-                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+    /** Compatibility entry point for independent knot users; snapshots before any submission. */
+    public void submit(SubmitNodeCollector collector,PoseStack pose,int color,boolean world) {
+        submit(snapshot(),collector,pose,color,world,world,world?1:1.5F,0,0,LocusRendering.CORE_LIGHT);
+    }
+    private static void submitLine(Frame frame,SubmitNodeCollector collector,PoseStack pose,int color,
+            float width,boolean world,boolean depthTest,int light) {
+        LocusRendering.submit(pose,collector,LocusRendering.lines(depthTest),(captured,vertices)->{
+            var points=frame.points();
+            for(int i=0;i<points.size();i++) {
+                var first=points.get(i);var second=points.get((i+1)%points.size());
+                float dx=(float)(second.xCoord()-first.xCoord()),dy=(float)(second.yCoord()-first.yCoord()),dz=(float)(second.zCoord()-first.zCoord());
+                var normal=new Vector3f(dx,dy,dz);
+                // Closed interpolation repeats the initial endpoint; omit that zero-length closure.
+                if(normal.lengthSquared()==0)continue;
+                normal.normalize();
+                lineVertex(captured,vertices,first,color,width,normal,light);
+                lineVertex(captured,vertices,second,color,width,normal,light);
+            }
+        },world);
+    }
+    private static void lineVertex(PoseStack.Pose pose,VertexConsumer out,DecimalPosition point,int color,float width,Vector3f normal,int light) {
+        out.addVertex(pose,(float)(.5+point.xCoord()),(float)(.5+point.yCoord()),(float)(.5+point.zCoord()))
+                .setColor(color).setNormal(pose,normal).setLineWidth(width).setLight(light);
     }
 
     public void update() {
