@@ -41,6 +41,7 @@ public final class RenderLootChest implements BlockEntityRenderer<TileEntityLoot
 	public void extractRenderState(TileEntityLootChest chest, State state, float partialTick,
 			Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
 		BlockEntityRenderer.super.extractRenderState(chest, state, partialTick, cameraPosition, breakProgress);
+		state.locked = chest.isStructureLocked();
 		state.facing = chest.getBlockState().getValue(BlockLootChest.FACING);
 		float open = chest.getOpenNess(partialTick);
 		state.open = 1F - (float)Math.pow(1F - open, 3);
@@ -55,7 +56,8 @@ public final class RenderLootChest implements BlockEntityRenderer<TileEntityLoot
 		float lidRotation = -state.open * ((float)Math.PI / 2F);
 		PoseStack modelPose = new PoseStack();
 		modelPose.last().set(poseStack.last());
-		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE),
+		collector.submitCustomGeometry(poseStack, state.locked
+				? RenderTypes.entitySolidGlint(TEXTURE) : RenderTypes.entityCutout(TEXTURE),
 				(unused, vertices) -> {
 					// Custom geometry is consumed after submit(). Keep the animation value with this node;
 					// mutating the shared baked model before queuing let another chest/frame overwrite it.
@@ -68,5 +70,6 @@ public final class RenderLootChest implements BlockEntityRenderer<TileEntityLoot
 	public static final class State extends BlockEntityRenderState {
 		private Direction facing = Direction.NORTH;
 		private float open;
+		private boolean locked;
 	}
 }

@@ -162,6 +162,9 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		}
 		if (controller.structure == StructureType.BIOME_FRAGMENT)
 			controller.tickBiomeFragment();
+		// Also repairs existing Burrows while their controller is still present.
+		if (controller.structure == StructureType.BURROW && level.getGameTime() % 20 == 0)
+			controller.setBurrowChestLocks(true);
 		if (controller.triggered || level.getGameTime() % 4 != 0)
 			return;
 		for (Player player : level.players()) {
@@ -182,6 +185,8 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		if (type == StructureType.BIOME_FRAGMENT)
 			initializeBiomePuzzle(net.minecraft.util.RandomSource.create(
 					Objects.hash(level != null ? level.dimension() : "unbound", worldPosition, version)));
+		if (type == StructureType.BURROW)
+			setBurrowChestLocks(true);
 		triggered = false;
 		regenerated = true;
 		setChanged();
@@ -871,25 +876,35 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		setChanged();
 	}
 
+	/** The three lower main-room chests remain sealed until this controller is destroyed. */
+	private void setBurrowChestLocks(boolean locked) {
+		if (level == null || level.isClientSide()) return;
+		for (BlockPos offset : List.of(new BlockPos(0, -1, -2),
+				new BlockPos(-2, -1, 0), new BlockPos(0, -1, 2))) {
+			BlockPos pos = worldPosition.offset(offset);
+			if (level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof TileEntityLootChest chest)
+				chest.setStructureLocked(locked);
+		}
+	}
+
 	/**
-	 * V33a {@code TileEntityStructControl.breakBlock}: destroying the controller unseals the whole
-	 * structure. Upstream walks its block array rewriting every shield and loot chest to
-	 * {@code meta % 8} -- dropping metadata bit 3, the reinforced flag -- so the shell becomes ordinary
-	 * mineable material.
-	 *
-	 * <p>That is what makes the reward reachable: the loot chests themselves are open to anyone who has
-	 * not claimed them, and it is the reinforced shield capping each one that actually holds them shut.
-	 * Without this the structure stays sealed forever and the chests can never be opened, which is
-	 * exactly what happened before it was ported.
-	 *
-	 * <p>The sweep is over the structure's own bounds rather than a stored array: the port builds its
-	 * structures from NBT templates and keeps no block list, and clearing a flag on blocks that are
-	 * already unreinforced costs nothing.
+	 * V33a breakBlock clears the reinforced shield and chest lock bits together ({@code meta % 8}).
+	 * The NBT-backed port keeps no original block array, so the sweep releases shielding and chests
+	 * in the Burrow's authored bounds, including its annexes. Other structures retain their existing
+	 * proximity sweep. Physical blocks above a chest still obey the normal cover rule.
 	 */
 	public void onControllerBroken() {
 		if (level == null || level.isClientSide() || structure == null)
 			return;
-		AABB box = proximityBox().inflate(2);
+		if (structure == StructureType.BURROW)
+			setBurrowChestLocks(false);
+		// The trigger volume is not the structure footprint: it misses two lower chest covers.
+		AABB box = structure == StructureType.BURROW
+				? new AABB(worldPosition.getX() - 3, worldPosition.getY() - 3,
+						worldPosition.getZ() - (furnaceRoom || lootRoom ? 4 : 3),
+						worldPosition.getX() + (lootRoom ? 7 : 6), worldPosition.getY() + 8,
+						worldPosition.getZ() + (furnaceRoom ? 6 : 3))
+				: proximityBox().inflate(2);
 		BlockPos min = BlockPos.containing(box.minX, box.minY, box.minZ);
 		BlockPos max = BlockPos.containing(box.maxX, box.maxY, box.maxZ);
 		for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
@@ -897,6 +912,8 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 			if (state.getBlock() instanceof BlockStructureShield
 					&& state.getValue(BlockStructureShield.REINFORCED))
 				level.setBlock(pos, state.setValue(BlockStructureShield.REINFORCED, false), 3);
+			if (level.getBlockEntity(pos) instanceof TileEntityLootChest chest)
+				chest.setStructureLocked(false);
 		}
 		ChromaSounds.POWERDOWN.playSoundAtBlock(level, worldPosition);
 	}
@@ -905,8 +922,16 @@ public final class TileEntityStructureController extends RandomizableContainerBl
 		if (structure == StructureType.OCEAN)
 			return player != null && player.distanceToSqr(worldPosition.getX() + 0.5,
 					worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5) <= 2.5 * 2.5;
-		// Door-state checks remain attached to the optional Burrow room blocks when that template lands.
-		return structure != StructureType.BURROW || (!furnaceRoom && !lootRoom);
+		if (structure == StructureType.BURROW && level != null) {
+			BlockState door = level.getBlockState(worldPosition.offset(5, -1, -2));
+			if (lootRoom && !(door.getBlock() instanceof BlockChromaDoor
+					&& door.getValue(BlockChromaDoor.OPEN)))
+				return false;
+			if (furnaceRoom && level.getBlockState(worldPosition.offset(2, 0, 2))
+					.getBlock() instanceof BlockStructureShield)
+				return false;
+		}
+		return true;
 	}
 
 	/** V33a Burrow addon flags, persisted with the controller and exposed for structure inspection. */

@@ -1,16 +1,11 @@
 package reika.chromaticraft.client.gui;
 
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
-import net.neoforged.neoforge.client.gui.GuiLayer;
-import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.magic.progression.ProgressionDescriptions;
 import reika.chromaticraft.magic.progression.ResearchLevel;
@@ -28,11 +23,9 @@ import java.util.TreeMap;
  * independently stacked, charcoal double-framed cards which reveal vertically at the upper-right
  * and remain visible for the configured progression duration.</p>
  */
-public final class ProgressionOverlay implements GuiLayer {
+public final class ProgressionOverlay {
 
 	private static final ProgressionOverlay INSTANCE = new ProgressionOverlay();
-	private static final net.minecraft.resources.Identifier ID =
-			net.minecraft.resources.Identifier.fromNamespaceAndPath(ChromatiCraft.MODID, "progression_notes");
 	private static final int DURATION = Math.max(100, ChromaOptions.PROGRESSDURATION.getValue());
 
 	private final TreeMap<Integer, Note> notes = new TreeMap<>();
@@ -40,8 +33,12 @@ public final class ProgressionOverlay implements GuiLayer {
 
 	private ProgressionOverlay() {}
 
-	public static void register(RegisterGuiLayersEvent event) {
-		event.registerAbove(VanillaGuiLayers.TITLE, ID, INSTANCE);
+	/** Called after the complete GUI, including screens, toasts and the F3 debug overlay. */
+	public static void renderForeground(GuiGraphicsExtractor graphics) {
+		if (Minecraft.getInstance().level == null || INSTANCE.notes.isEmpty())
+			return;
+		graphics.nextStratum();
+		INSTANCE.render(graphics);
 	}
 
 	public static void add(ProgressStage stage) {
@@ -78,8 +75,7 @@ public final class ProgressionOverlay implements GuiLayer {
 		}
 	}
 
-	@Override
-	public void render(GuiGraphicsExtractor graphics, DeltaTracker delta) {
+	private void render(GuiGraphicsExtractor graphics) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level == null || notes.isEmpty())
 			return;

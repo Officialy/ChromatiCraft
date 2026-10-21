@@ -76,6 +76,7 @@ import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightPanel;
 import reika.chromaticraft.block.dimension.structure.lightpanel.BlockLightSwitch;
 import reika.chromaticraft.block.dimension.structure.locks.BlockColoredLock;
 import reika.chromaticraft.block.worldgen26.BlockCliffStone;
+import reika.chromaticraft.block.worldgen26.BlockLootChest;
 import reika.chromaticraft.data.ChromaChestLoot;
 import reika.chromaticraft.data.ChromaStructureTemplateProvider;
 import reika.chromaticraft.data.ChromaTestStructureProvider;
@@ -411,7 +412,7 @@ public final class ChromaGameTests {
 		register(event, env, "creative_tiered_resource_access", ChromaGameTests::creativeTieredResourceAccess);
 		register(event, env, "rainbow_tree_shape_and_log", ChromaGameTests::rainbowTreeShapeAndLog);
 		register(event, env, "structure_cavern_nbt_controller", ChromaGameTests::structureCavernNbtController);
-		register(event, env, "structure_burrow_nbt_controller", ChromaGameTests::structureBurrowNbtController);
+		register(event, env, "structure_burrow_nbt_controller", 80, ChromaGameTests::structureBurrowNbtController);
 		register(event, env, "structure_ocean_nbt_trap", 70, ChromaGameTests::structureOceanNbtTrap);
 		register(event, env, "structure_desert_nbt_controller", ChromaGameTests::structureDesertNbtController);
 		register(event, env, "structure_snow_nbt_route", ChromaGameTests::structureSnowNbtRoute);
@@ -5567,7 +5568,64 @@ public final class ChromaGameTests {
 					reika.chromaticraft.registry.ChromaShieldTypes.CRACK).get())
 					&& cracked.getValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED),
 					"Burrow proximity must convert the source entrance cell to reinforced crack");
-			helper.succeed();
+			var level = helper.getLevel();
+			var player = helper.makeMockPlayer(GameType.SURVIVAL);
+			List<BlockPos> lower = List.of(origin.offset(0, -1, -2),
+					origin.offset(-2, -1, 0), origin.offset(0, -1, 2));
+			for (BlockPos pos : lower) {
+				TileEntityLootChest chest = (TileEntityLootChest)level.getBlockEntity(pos);
+				helper.assertTrue(chest.isStructureLocked() && !BlockLootChest.canOpen(level, pos, player),
+						"proximity must leave all three lower Burrow chests sealed");
+				// Even tunnelling away the physical cover must not bypass the controller lock.
+				if (pos.equals(lower.getFirst())) level.removeBlock(pos.above(), false);
+				BlockState state = level.getBlockState(pos);
+				helper.assertTrue(state.getDestroyProgress(player, level, pos) == 0,
+						"sealed Burrow chests must resist survival mining");
+				state.useWithoutItem(level, player, new BlockHitResult(Vec3.atCenterOf(pos),
+						Direction.UP, pos, false));
+				helper.assertTrue(player.containerMenu == player.inventoryMenu,
+						"right-clicking a sealed chest must not open its inventory");
+				var restored = new TileEntityLootChest(pos, state);
+				restored.loadWithComponents(TagValueInput.create(ProblemReporter.DISCARDING,
+						level.registryAccess(), chest.saveWithoutMetadata(level.registryAccess())));
+				helper.assertTrue(restored.isStructureLocked(), "chest locks must survive saving/loading");
+				var client = new TileEntityLootChest(pos, state);
+				client.handleUpdateTag(TagValueInput.create(ProblemReporter.DISCARDING,
+						level.registryAccess(), chest.getUpdateTag(level.registryAccess())));
+				helper.assertTrue(client.isStructureLocked(), "chunk sync must enable the enchanted effect");
+				helper.assertTrue(!((TileEntityLootChest)level.getBlockEntity(pos.above(4))).isStructureLocked(),
+						"the upper three chests must not acquire the lower-room lock");
+			}
+			// Exercise repair of a pre-fix Burrow through its ordinary controller tick.
+			((TileEntityLootChest)level.getBlockEntity(lower.getFirst())).setStructureLocked(false);
+			helper.runAfterDelay(21, () -> {
+				helper.assertTrue(((TileEntityLootChest)level.getBlockEntity(lower.getFirst())).isStructureLocked(),
+						"an intact controller must repair locks in already-generated Burrows");
+				helper.assertTrue(!controller.canBreak(player), "closed annex puzzles must protect the controller");
+				((TileEntityChromaDoor)level.getBlockEntity(firstDoor)).open(0);
+				level.removeBlock(origin.offset(2, 0, 2), false);
+				helper.assertTrue(controller.canBreak(player), "completed annexes must allow controller mining");
+				BlockState controllerState = level.getBlockState(origin);
+				controllerState.getBlock().playerWillDestroy(level, origin, controllerState, player);
+				level.removeBlock(origin, false);
+				for (BlockPos pos : lower) {
+					TileEntityLootChest chest = (TileEntityLootChest)level.getBlockEntity(pos);
+					helper.assertTrue(!chest.isStructureLocked(), "breaking the controller must clear every lower lock");
+					BlockState cover = level.getBlockState(pos.above());
+					if (cover.getBlock() instanceof reika.chromaticraft.block.worldgen26.BlockStructureShield) {
+						helper.assertTrue(!cover.getValue(reika.chromaticraft.block.worldgen26.BlockStructureShield.REINFORCED),
+								"controller destruction must release every authored chest cover");
+						level.removeBlock(pos.above(), false);
+					}
+					helper.assertTrue(BlockLootChest.canOpen(level, pos, player),
+							"unsealed and uncovered lower chests must be accessible");
+					var client = new TileEntityLootChest(pos, level.getBlockState(pos));
+					client.onDataPacket(null, TagValueInput.create(ProblemReporter.DISCARDING,
+							level.registryAccess(), chest.getUpdateTag(level.registryAccess())));
+					helper.assertTrue(!client.isStructureLocked(), "unlock sync must remove the enchanted effect");
+				}
+				helper.succeed();
+			});
 		});
 	}
 

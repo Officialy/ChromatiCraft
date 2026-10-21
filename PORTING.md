@@ -11872,3 +11872,75 @@ a comment pointing to its ClientEnvironment bridge. Expand the actual mathsci
 library scan and validate server execution/reflection paths before declaring any
 client import a defect. Revisit D13/N08 with a corrected native Iris binding path
 or changed installed artifact, then rerun every required enabled/shadow phase.
+
+
+## 2026-10-18 - Progression notifications above F3
+
+Moved the active ProgressionOverlay out of the HUD layer above TITLE. Minecraft
+26.3 extracts screens, vanilla toasts and the F3 debug overlay after the HUD, so
+even registerAboveAll cannot put the cards in front of F3. A client-only
+ProgressionOverlayMixin now appends the cards at Gui.extractRenderState TAIL,
+in a fresh GUI stratum with independent pose/scissor state. The original card
+rendering, ordering, reveal animation, expiry and sound cooldown are preserved;
+rendering is gated to loaded in-world frames. The old HUD registration is removed
+to avoid drawing the notifications twice. The existing mixin source allowlist
+already includes the new class.
+
+Validation: checked the injection signature, shadow fields and extraction order
+against the Gradle-generated patched Minecraft 26.3.0.76 source jar.
+`:ChromatiCraft:compileJava --offline` completed successfully (exit 0; 109
+compiler warnings). Client mixin registration and removal of the old HUD
+registration were checked. Live graphical overlap verification has not been run.
+
+
+## 2026-10-21 - Burrow lower chest controller locks
+
+The three lower main-room Loot Chests now acquire the persistent structure lock
+when their Burrow controller initializes. Intact controllers also restore that
+lock every second, including already-generated pre-fix Burrows; proximity does
+not release it. Breaking the controller clears the three locks explicitly, since
+two lie outside the old proximity sweep. The sweep also clears chest locks along
+with shielding, matching V33a's metadata-bit removal. Upper chests and the two
+key-door cache chests do not acquire the lower-room lock.
+
+Loot Chest chunk tags and update packets synchronize only the lock state. The
+renderer captures it into render state and uses the native 26.3 combined entity
+glint pipeline while sealed. Unlock updates restore the ordinary chest texture.
+The existing server access and mining gates enforce the lock.
+
+Restored V33a's actual Burrow controller mining checks: the optional loot door
+must be open and the furnace-room entrance shield must be removed. The previous
+port rejected mining forever whenever either annex existed. Extended the native
+structure_burrow_nbt_controller GameTest to exercise locks, denied inventory
+access/mining, persistence, client synchronization, old-Burrow repair, upper-chest
+exclusion, annex gates and playerWillDestroy release.
+
+The native regression also exposed that the old proximity-volume release sweep
+missed two authored Cracked Shielding covers. Burrow destruction now sweeps the
+actual base footprint plus present annexes. The covers remain in place, as in
+V33a, but lose reinforcement and can be mined after controller destruction. The
+test removes one cover early to prove that bypassing it cannot bypass the chest
+lock, then verifies all remaining covers are released before opening access.
+
+Validation: :ChromatiCraft:runGameTest with selector
+chromaticraft:structure_burrow_nbt_controller passed (1/1 required, Gradle
+BUILD SUCCESSFUL in 2m 19s). The regression runs in
+ChromatiCraft/build/burrow-lock-gametest; evidence is
+build/burrow-lock-validation.log. Compilation includes the native combined-glint
+renderer. No live graphical glint inspection was performed. The owner's play
+world was not modified.
+
+
+## 2026-10-21 - Follow-up: completed large Burrow stayed protected in old client
+
+Read-only inspection of Survival found the completed Burrow controller at
+(1367,71,9257), with furnaceRoom and lootRoom both true. Both furnace entrance
+cells are air; all four keyed barrier cells have open=true. The saved puzzle
+state therefore satisfies the current canBreak predicate. The play log already
+contains client activity at 11:18, before the controller gate fix was compiled
+and tested (final passing regression at 12:11); that session stopped at 12:15.
+This is consistent with the pre-fix loaded class that rejected every Burrow
+with an annex. javap inspection of the current compiled controller confirms
+the door OPEN and furnace entrance checks and successful true return once
+both pass. No additional gate change or save repair is needed; relaunching
+with the updated build is required. No world files were changed.

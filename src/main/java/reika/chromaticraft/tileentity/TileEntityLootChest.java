@@ -205,7 +205,32 @@ public class TileEntityLootChest extends RandomizableContainerBlockEntity implem
 		if (structureLocked != locked) {
 			structureLocked = locked;
 			setChanged();
+			if (level != null && !level.isClientSide())
+				level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
 		}
+	}
+
+	@Override
+	public net.minecraft.nbt.CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider provider) {
+		// Only the lock is render state; never send the unopened loot or its seed to clients.
+		var tag = new net.minecraft.nbt.CompoundTag();
+		tag.putBoolean("structureLocked", structureLocked);
+		return tag;
+	}
+
+	@Override
+	public void handleUpdateTag(ValueInput input) {
+		structureLocked = input.getBooleanOr("structureLocked", false);
+	}
+
+	@Override
+	public void onDataPacket(net.minecraft.network.Connection connection, ValueInput input) {
+		handleUpdateTag(input);
+	}
+
+	@Override
+	public net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket getUpdatePacket() {
+		return net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this);
 	}
 
 	/** Adds one of V33a's persistent progression rewards to this generated chest. */

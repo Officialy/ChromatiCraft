@@ -43,7 +43,6 @@ public final class ChromaClientRenderers {
 		bus.addListener(ChromaClientRenderers::registerClientExtensions);
 		bus.addListener(PylonAttackOverlay::register);
 		bus.addListener(LoreDiscoveryOverlay::register);
-		bus.addListener(reika.chromaticraft.client.gui.ProgressionOverlay::register);
 		bus.addListener(reika.chromaticraft.client.gui.StructureNotificationOverlay::register);
 		bus.addListener(reika.chromaticraft.auxiliary.render.PylonFinderOverlay::register);
 		bus.addListener(reika.chromaticraft.auxiliary.render.ProbeInfoOverlayRenderer::register);
