@@ -74,7 +74,7 @@ public class EntityMonsterBait extends Mob {
     public int getRenderColor(double layer) {
         if (currentEntity!=null) return ReikaColorAPI.mixColorBiDirectional(ReikaEntityHelper.mobToColor(currentEntity),0,0xffffff,(float)(.5+.25*Math.sin(tickCount/12D+layer*60)));
         int color=ReikaColorAPI.getColorWithBrightnessMultiplier(0xffffff,getBrightness());
-        return ReikaColorAPI.getColorWithBrightnessMultiplier(color,.65F+(float)(.35*Math.sin(tickCount/10D+layer*40)));
+        return ReikaColorAPI.getColorWithBrightnessMultiplier(color,.65F+(float)(.35F*Math.sin(tickCount/10D+layer*40)));
     }
     @Override public boolean hurtServer(ServerLevel level, DamageSource source,float amount) { return false; }
     @Override public boolean isAttackable() { return false; }

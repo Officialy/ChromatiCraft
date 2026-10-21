@@ -20,7 +20,9 @@ import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.data.AtlasIds;
 import reika.chromaticraft.entity.EntityMonsterBait;
 import reika.chromaticraft.registry.ChromaIcons;
-import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 
 /** V33a's nine horizontal rose-flare layers, with their per-layer color and drift. */
 public final class RenderMonsterBait extends EntityRenderer<EntityMonsterBait,RenderMonsterBait.State> {
@@ -28,21 +30,22 @@ public final class RenderMonsterBait extends EntityRenderer<EntityMonsterBait,Re
     public State createRenderState() { return new State(); }
     @Override public void extractRenderState(EntityMonsterBait entity,State state,float partial) {
         super.extractRenderState(entity,state,partial);
+        state.ticks=entity.tickCount;
         for (int i=0;i<9;i++) state.colors[i]=entity.getRenderColor(-.0625+i*.015625);
     }
     @Override public void submit(State state,PoseStack stack,SubmitNodeCollector collector,CameraRenderState camera) {
         var icon=Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(ChromaIcons.ROSEFLARE.getIcon());
-        int[] colors=state.colors.clone(); double age=state.ageInTicks;
-        collector.submitCustomGeometry(stack,ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),(pose,out)-> {
+        int[] colors=state.colors.clone(); int ticks=state.ticks;
+        ScreenParticleRendering.submitGeometry(collector,stack,EntityLighting.LIGHTMAP_ONLY.screen(TextureAtlas.LOCATION_BLOCKS,false),(pose,out)-> {
             for (int i=0;i<9;i++) {
-                double y=-.0625+i*.015625,t=age/10+y*40,dx=.0625*Math.sin(t*.46),dz=.0625*Math.sin(t*.78);
+                double y=-.0625+i*.015625,t=ticks/10D+y*40,dx=.0625*Math.sin(t*.46),dz=.0625*Math.sin(t*.78);
                 int color=0xff000000|colors[i];
-                out.addVertex(pose,(float)(dx-.5),(float)y,(float)(dz-.5)).setColor(color).setUv(icon.getU0(),icon.getV0());
-                out.addVertex(pose,(float)(dx+.5),(float)y,(float)(dz-.5)).setColor(color).setUv(icon.getU1(),icon.getV0());
-                out.addVertex(pose,(float)(dx+.5),(float)y,(float)(dz+.5)).setColor(color).setUv(icon.getU1(),icon.getV1());
-                out.addVertex(pose,(float)(dx-.5),(float)y,(float)(dz+.5)).setColor(color).setUv(icon.getU0(),icon.getV1());
+                out.addVertex(pose,(float)(dx-.5),(float)y,(float)(dz-.5)).setColor(color).setUv(icon.getU0(),icon.getV0()).setLight(240).setOverlay(OverlayTexture.NO_OVERLAY).setNormal(pose,0,1,0);
+                out.addVertex(pose,(float)(dx+.5),(float)y,(float)(dz-.5)).setColor(color).setUv(icon.getU1(),icon.getV0()).setLight(240).setOverlay(OverlayTexture.NO_OVERLAY).setNormal(pose,0,1,0);
+                out.addVertex(pose,(float)(dx+.5),(float)y,(float)(dz+.5)).setColor(color).setUv(icon.getU1(),icon.getV1()).setLight(240).setOverlay(OverlayTexture.NO_OVERLAY).setNormal(pose,0,1,0);
+                out.addVertex(pose,(float)(dx-.5),(float)y,(float)(dz+.5)).setColor(color).setUv(icon.getU0(),icon.getV1()).setLight(240).setOverlay(OverlayTexture.NO_OVERLAY).setNormal(pose,0,1,0);
             }
         });
     }
-    public static final class State extends EntityRenderState { final int[] colors=new int[9]; }
+    public static final class State extends EntityRenderState { final int[] colors=new int[9]; int ticks; }
 }
