@@ -32,7 +32,8 @@ import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelFarmer;
 import reika.chromaticraft.registry.CrystalElement;
-import reika.chromaticraft.render.ChromaRenderPipelines;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
 
 public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer, RenderFarmer.State> {
@@ -66,30 +67,41 @@ public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer,
         };
         pose.rotate(Axis.YP.rotationDegrees(angle));
         pose.translate(-0.5, 0, -0.5);
-        submitMachine(pose, collector, model, state.lightCoords);
+        submitMachine(pose, collector, model, state.lightCoords, true);
         pose.popPose();
     }
 
     public static void submitMachine(PoseStack pose, SubmitNodeCollector collector, ModelFarmer model, int light) {
+        submitMachine(pose, collector, model, light, false);
+    }
+
+    private static void submitMachine(PoseStack pose, SubmitNodeCollector collector, ModelFarmer model, int light, boolean world) {
         PoseStack body = copy(pose);
         body.translate(0.5, 1.5, 0.5);
         body.scale(1, -1, -1);
         collector.submitCustomGeometry(body, RenderTypes.entityCutout(TEXTURE),
                 (unused, output) -> model.render(body, output, light, OverlayTexture.NO_OVERLAY));
         PoseStack effects = copy(pose);
-        collector.submitCustomGeometry(effects,
-                ChromaRenderPipelines.legacyAdditiveSprite(TextureAtlas.LOCATION_BLOCKS),
-                (unused, output) -> renderEffects(effects.last(), output));
+        // V33a Farmer renders only in pass 0: retain depth writes and block-light 15/sky-light 0.
+        // Screen blending belongs on composed world color, while item draws retain their collector.
+        var type = EntityLighting.LIGHTMAP_ONLY.screen(TextureAtlas.LOCATION_BLOCKS, false, true);
+        var fire = sprite("bluefire");
+        var halo = sprite("rift_halo");
+        var sparkle = sprite("sparkle2");
+        PoseStack.Pose effectPose = effects.last().copy();
+        SubmitNodeCollector.CustomGeometryRenderer draw =
+                (unused, output) -> renderEffects(effectPose, output, fire, halo, sparkle);
+        if (world) ScreenParticleRendering.submitGeometry(collector, effects, type, draw);
+        else collector.submitCustomGeometry(effects, type, draw);
     }
 
-    private static void renderEffects(PoseStack.Pose pose, VertexConsumer output) {
-        TextureAtlasSprite fire = sprite("bluefire");
+    private static void renderEffects(PoseStack.Pose pose, VertexConsumer output,
+            TextureAtlasSprite fire, TextureAtlasSprite halo, TextureAtlasSprite sparkle) {
         front(pose, output, fire, 0.95F, 0, 0, 1, 0, 1, 1, 0, 1);
         front(pose, output, fire, 0.95F, 1, 1, 0, 1, 0, 0, 1, 0);
         front(pose, output, fire, 0.95F, 0, 1, 0, 0, 1, 0, 1, 1);
         front(pose, output, fire, 0.95F, 1, 0, 1, 1, 0, 1, 0, 0);
-        sides(pose, output, sprite("rift_halo"), 0.995F);
-        TextureAtlasSprite sparkle = sprite("sparkle2");
+        sides(pose, output, halo, 0.995F);
         sides(pose, output, sparkle, 0.9975F);
         front(pose, output, sparkle, 0.9975F, 0, 0, 1, 0, 1, 1, 0, 1);
     }
@@ -118,7 +130,7 @@ public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer,
         output.addVertex(pose, x, y, z).setColor(0xff000000 | CrystalElement.GREEN.color())
                 .setUv(sprite.getU0() + u * (sprite.getU1() - sprite.getU0()),
                         sprite.getV0() + v * (sprite.getV1() - sprite.getV0()))
-                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(0xF000F0).setNormal(pose, 0, 1, 0);
+                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(240).setNormal(pose, 0, 1, 0);
     }
 
     private static TextureAtlasSprite sprite(String name) {
