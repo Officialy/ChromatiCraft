@@ -20,7 +20,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.magic.progression.ProgressStage;
 import reika.chromaticraft.registry.ChromaIcons;
@@ -94,7 +94,7 @@ public final class RenderStructureController
 		// Draw with the pose handed to the callback. PoseStack reuses its Pose objects, so one captured
 		// here is overwritten by later renders before this deferred submit runs, which put the flare
 		// somewhere else entirely.
-		submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.invertedAddSprite(TextureAtlas.LOCATION_BLOCKS),
+		submitComposedScene(poseStack, collector, ChromaRenderPipelines.invertedAddSprite(TextureAtlas.LOCATION_BLOCKS),
 				(pose, buffer) -> {
 					float u = flare.getU0();
 					float v = flare.getV0();
@@ -121,11 +121,11 @@ public final class RenderStructureController
 		TextureAtlasSprite hive = sprite(ChromaIcons.HIVE.getIcon());
 		TextureAtlasSprite rift = sprite(ChromaIcons.RIFT.getIcon());
 
-		submitAfterTerrain(poseStack, collector, 1, ChromaRenderPipelines.multiplySprite(TextureAtlas.LOCATION_BLOCKS),
+		submitComposedScene(poseStack, collector, 1, ChromaRenderPipelines.multiplySprite(TextureAtlas.LOCATION_BLOCKS),
 				(pose, buffer) -> layer(buffer, pose, x, 6.75F, 0xffffffff));
-		submitAfterTerrain(poseStack, collector, 2, ChromaRenderPipelines.translucentSprite(TextureAtlas.LOCATION_BLOCKS),
+		submitComposedScene(poseStack, collector, 2, ChromaRenderPipelines.translucentSprite(TextureAtlas.LOCATION_BLOCKS),
 				(pose, buffer) -> layer(buffer, pose, x, 6.75F, 0x40ffffff));
-		submitAfterTerrain(poseStack, collector, 3, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
+		submitComposedScene(poseStack, collector, 3, ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
 				(pose, buffer) -> {
 					layer(buffer, pose, hive, 6, 0xff300000);
 					layer(buffer, pose, hive, 7, 0xff300000);
@@ -134,7 +134,7 @@ public final class RenderStructureController
 
 		long ms = state.millis;
 		int colour = 0xff000000 | ReikaColorAPI.mixColors(0xff0000, 0x700000, (float)(0.5+0.5*Math.sin(ms/100D)));
-		submitAfterTerrain(poseStack, collector, 4,
+		submitComposedScene(poseStack, collector, 4,
 				ChromaRenderPipelines.additiveSprite(ItemFeatureRenderer.ENCHANTED_GLINT_ITEM),
 				(pose, buffer) -> dome(buffer, pose, colour, ms));
 	}
@@ -197,17 +197,17 @@ public final class RenderStructureController
 		return Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(id);
 	}
 
-	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+	private static void submitComposedScene(PoseStack poseStack, SubmitNodeCollector collector,
 			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
-		submitAfterTerrain(poseStack, collector, 0, renderType, renderer);
+		submitComposedScene(poseStack, collector, 0, renderType, renderer);
 	}
 
-	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector, int order,
+	private static void submitComposedScene(PoseStack poseStack, SubmitNodeCollector collector, int order,
 			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
 		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 				poseStack.last().copy(), renderType, renderer);
 		collector.order(order)
-				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+				.submitSpecial(ScreenParticleRendering.PHASE, submit);
 	}
 
 	/** The Biome Fragment's dome reaches twelve blocks out from the shaft; keep it drawn while any of it is in view. */

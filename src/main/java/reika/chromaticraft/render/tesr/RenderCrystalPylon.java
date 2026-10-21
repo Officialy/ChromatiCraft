@@ -18,7 +18,7 @@ import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
@@ -138,7 +138,7 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
         for (Beam beam : state.beams) {
-            submitAfterTerrain(poseStack, collector, IrisCompatibility.shadersEnabled()
+            submitComposedScene(poseStack, collector, IrisCompatibility.shadersEnabled()
                             ? ShaderCompatibleRenderTypes.beam(BEAM) : ChromaRenderPipelines.energyBeam(BEAM),
                     (pose, vertices) -> beamTube(pose, vertices, beam, scroll));
         }
@@ -211,9 +211,9 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
                             : ChromaRenderPipelines.pylonCore(TextureAtlas.LOCATION_BLOCKS),
                     (pose, vertices) -> quad(pose, vertices, shaders ? alphaSprite(spriteId, true) : sprite, scale, color));
             collector.order(-1)
-                    .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, base);
+                    .submitSpecial(ScreenParticleRendering.PHASE, base);
         }
-        submitAfterTerrain(poseStack, collector,
+        submitComposedScene(poseStack, collector,
                 shaders ? ShaderCompatibleRenderTypes.pylon(TextureAtlas.LOCATION_BLOCKS, xray)
                         : xray ? ChromaRenderPipelines.additiveSpriteThroughWall(TextureAtlas.LOCATION_BLOCKS)
                         : ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
@@ -230,16 +230,16 @@ public final class RenderCrystalPylon implements BlockEntityRenderer<TileEntityC
      * V33a drew the pylon after translucent world geometry. The ordinary 26.3 custom-geometry
      * phase runs before water, which lets water and clouds wash the additive colour away.
      */
-    private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+    private static void submitComposedScene(PoseStack poseStack, SubmitNodeCollector collector,
             net.minecraft.client.renderer.rendertype.RenderType renderType,
             SubmitNodeCollector.CustomGeometryRenderer renderer) {
         CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
                 poseStack.last().copy(), renderType, renderer);
         collector.order(0)
         // TRANSLUCENT_CUSTOM_GEOMETRY is drained before the translucent chunk layer;
-        // AFTER_TERRAIN is the actual post-water hook. Water is therefore already down and can
+        // The owned screen phase is post-water and post-OIT. Water is therefore already down and can
         // correctly occlude the glow, while the pipeline's depth still orders later compositing.
-                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+                .submitSpecial(ScreenParticleRendering.PHASE, submit);
     }
 
     private static void quad(PoseStack.Pose pose, VertexConsumer vertices,

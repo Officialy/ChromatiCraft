@@ -18,6 +18,8 @@ import reika.chromaticraft.client.render.ArtealloyEffects;
 import reika.chromaticraft.entity.EntityDataCrystal;
 import reika.chromaticraft.render.ChromaRenderPipelines;
 import reika.dragonapi.instantiable.RayTracer;
+import reika.dragonapi.libraries.registry.ReikaItemHelper;
+import reika.dragonapi.client.ScreenParticleRendering;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +29,7 @@ import java.util.List;
  *
  * <p>Sizes follow the 1.7.10 path exactly: Forge drew a {@code BLOCK_3D} custom item renderer at half scale,
  * so the renderer's {@code glScaled(3)} is 1.5 blocks, and a 1.7.10 item's render origin was 0.125 above its
- * bounding box (its {@code yOffset}), where 26.2 draws from the box's base. The prism pivots about its middle
+ * bounding box (its {@code yOffset}), where 26.3 draws from the box's base. The prism pivots about its middle
  * and does not spin on its own axis (V33a passed tick 0). The flare is drawn through walls, and only while the
  * viewer has line of sight to the crystal.
  *
@@ -50,6 +52,7 @@ public final class RenderDataCrystal extends EntityRenderer<EntityDataCrystal, R
 	private static final float SCALE = 1.5F;
 	private static final double PRISM_HEIGHT = 1.25;
 	private static final double FLARE_SIZE = 3;
+	private static final List<Vec3> OUTLINE = createOutline();
 
 	private static final RayTracer.RayTracerWithCache<?> LOS =
 			RayTracer.getMultipointVisualLOSForRenderCulling(RenderDataCrystal::isClearLineOfSight);
@@ -84,8 +87,10 @@ public final class RenderDataCrystal extends EntityRenderer<EntityDataCrystal, R
 	@Override
 	public void extractRenderState(EntityDataCrystal crystal, State state, float partialTick) {
 		super.extractRenderState(crystal, state, partialTick);
-		state.airborneOwned = crystal.getOwner() != null && !crystal.onGround();
+		var tag = ReikaItemHelper.getStackTag(crystal.getItem());
+		state.airborneOwned = tag != null && tag.contains("owner") && !crystal.onGround();
 		state.identity = System.identityHashCode(crystal);
+		state.spinTicks = crystal.tickCount;
 		state.artealloy = crystal.isArtealloy();
 		state.lineOfSight = !state.artealloy && LOS.isClearLineOfSight(crystal);
 		if (state.artealloy) {
@@ -110,39 +115,47 @@ public final class RenderDataCrystal extends EntityRenderer<EntityDataCrystal, R
 		prismPose.rotate(Axis.ZP.rotationDegrees(27.5F));
 		float rotation = 90;
 		if (state.airborneOwned)
-			rotation = state.ageInTicks * 90F / (20 + Math.floorMod(state.identity, 10));
+			rotation = (float)(state.spinTicks * 90D / (20D + state.identity % 10D));
 		prismPose.rotate(Axis.XP.rotationDegrees(rotation));
 		prismPose.translate(0, -PRISM_HEIGHT / 2, 0);
 		boolean orange = state.artealloy;
-		collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveSprite(orange ? NODE_ORANGE : NODE),
-				(pose, out) -> prism(prismPose.last(), out, orange));
+		var capturedPrism = prismPose.last().copy();
+		// V33a disables texture sampling for both smooth-shaded caps, then restores it for the sides.
+		ScreenParticleRendering.submitGeometry(collector, prismPose, ChromaRenderPipelines.ADDITIVE_COLOR_TYPE,
+				(pose, out) -> prismCaps(capturedPrism, out, orange));
+		ScreenParticleRendering.submitGeometry(collector, prismPose, ChromaRenderPipelines.additiveSprite(orange ? NODE_ORANGE : NODE),
+				(pose, out) -> prismSides(capturedPrism, out));
 
 		if (state.lineOfSight) {
 			PoseStack flarePose = copy(poseStack);
-			flarePose.rotate(camera.orientation);
-			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.legacyAdditiveSpriteThroughWall(FLARE),
-					(pose, out) -> flare(flarePose.last(), out));
+			flarePose.rotate(Axis.YP.rotationDegrees(-camera.yRot));
+			flarePose.rotate(Axis.XP.rotationDegrees(camera.xRot));
+			var capturedFlare = flarePose.last().copy();
+			ScreenParticleRendering.submitGeometry(collector, flarePose, ChromaRenderPipelines.additiveSpriteThroughWall(FLARE),
+					(pose, out) -> flare(capturedFlare, out));
 		}
 		poseStack.popPose();
 	}
 
-	/** V33a {@code RenderDataNode.renderPrism(0, v5, 1, 1.25, 0, orangeglow)}. */
-	private static void prism(PoseStack.Pose pose, VertexConsumer out, boolean orange) {
+	/** V33a renderPrism(0): retain its closed outline, including the final duplicate side. */
+	private static List<Vec3> createOutline() {
 		double s = 0.125 * 0.875;
-		double r1 = 2 * s * 0.875;
-		double r2 = 2 * s;
 		double[] da = {90, 15, 15};
-		double[] ra = {r1, r2, r1};
+		double[] ra = {2 * s * 0.875, 2 * s, 2 * s * 0.875};
+		List<Vec3> points = new ArrayList<>();
+		int i = 0;
+		for (double a = 45; a <= 405; a += da[i]) {
+			points.add(new Vec3(ra[i] * Math.cos(Math.toRadians(a)), 0, ra[i] * Math.sin(Math.toRadians(a))));
+			i = (i + 1) % da.length;
+		}
+		return List.copyOf(points);
+	}
+
+	private static void prismCaps(PoseStack.Pose pose, VertexConsumer out, boolean orange) {
+		var li = OUTLINE;
 		int c1 = orange ? 0xffffffff : 0xffa0e0ff;
 		int c2 = 0xffffffff;
 		double h = PRISM_HEIGHT;
-		List<Vec3> li = new ArrayList<>();
-		int i = 0;
-		double a0 = 45;
-		for (double a = a0; a <= a0 + 360; a += da[i]) {
-			li.add(new Vec3(ra[i] * Math.cos(Math.toRadians(a)), 0, ra[i] * Math.sin(Math.toRadians(a))));
-			i = (i + 1) % da.length;
-		}
 		// The caps were untextured smooth-shaded fans; each triangle is a degenerate quad on this QUADS pipeline.
 		for (int idx = 0; idx < li.size() - 1; idx++) {
 			Vec3 a = li.get(idx);
@@ -156,6 +169,12 @@ public final class RenderDataCrystal extends EntityRenderer<EntityDataCrystal, R
 			fanVertex(pose, out, a.x, h, a.z, c2);
 			fanVertex(pose, out, 0, h, 0, 0xffa0e0ff);
 		}
+	}
+
+	private static void prismSides(PoseStack.Pose pose, VertexConsumer out) {
+		var li = OUTLINE;
+		double h = PRISM_HEIGHT;
+		int c2 = 0xffffffff;
 		for (int idx = 0; idx < li.size(); idx++) {
 			Vec3 p1 = li.get(idx);
 			Vec3 p2 = li.get((idx + 1) % li.size());
@@ -170,9 +189,9 @@ public final class RenderDataCrystal extends EntityRenderer<EntityDataCrystal, R
 		}
 	}
 
-	/** Cap vertices sample a flat white patch of the node texture, standing in for GL_TEXTURE_2D being off. */
+	/** Untextured triangle-fan colors interpolate without consulting either node texture. */
 	private static void fanVertex(PoseStack.Pose pose, VertexConsumer out, double x, double y, double z, int color) {
-		out.addVertex(pose, (float)x, (float)y, (float)z).setUv(0.88F, 0.245F).setColor(color);
+		out.addVertex(pose, (float)x, (float)y, (float)z).setColor(color);
 	}
 
 	/** V33a {@code RenderDataNode.renderFlare(v5, 1, true)}: a ±3 billboard in 0xb0e0ff. */
@@ -194,6 +213,7 @@ public final class RenderDataCrystal extends EntityRenderer<EntityDataCrystal, R
 	public static final class State extends EntityRenderState {
 		private boolean airborneOwned;
 		private int identity;
+		private int spinTicks;
 		private boolean artealloy;
 		private boolean lineOfSight;
 	}

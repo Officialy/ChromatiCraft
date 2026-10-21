@@ -28,7 +28,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
 import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.auxiliary.MobSonar;
 import reika.chromaticraft.auxiliary.MobSonar.EntitySonarType;
@@ -131,7 +131,7 @@ public final class MobSonarRenderer {
                             box(pose, vertices, point.box().inflate(i/8D).move(-camera.x,-camera.y,-camera.z), red,green,blue);
                     }
                 });
-        event.getSubmitNodeCollector().order(1).submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, geometry);
+        event.getSubmitNodeCollector().order(1).submitSpecial(ScreenParticleRendering.PHASE, geometry);
     }
 
     private static void box(PoseStack.Pose pose, VertexConsumer vertices, AABB box, int red, int green, int blue) {

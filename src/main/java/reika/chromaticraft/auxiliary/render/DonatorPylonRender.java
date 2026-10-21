@@ -23,7 +23,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.client.render.IrisCompatibility;
 import reika.chromaticraft.registry.ChromaBlocks;
@@ -78,7 +78,7 @@ public final class DonatorPylonRender implements PlayerRenderObj {
                                     .setNormal(pose, 0, 0, 1);
                         }
                     });
-            collector.order(0).submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+            collector.order(0).submitSpecial(ScreenParticleRendering.PHASE, submit);
         } finally { stack.popPose(); }
     }
     @Override public int getRenderPriority() { return Integer.MAX_VALUE; }

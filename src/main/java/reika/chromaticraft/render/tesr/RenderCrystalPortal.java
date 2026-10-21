@@ -16,7 +16,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.block.BlockChromaPortal;
@@ -81,23 +81,23 @@ public final class RenderCrystalPortal implements
 			return;
 
 		PoseStack focusPose = copy(poseStack);
-		submitAfterTerrain(focusPose, collector, ChromaRenderPipelines.additiveSprite(RIFT),
+		submitComposedScene(focusPose, collector, ChromaRenderPipelines.additiveSprite(RIFT),
 				(ignored, out) -> renderFocus(focusPose.last(), out, state));
 		if (!state.complete)
 			return;
 
 		PoseStack floorPose = copy(poseStack);
-		submitAfterTerrain(floorPose, collector, ChromaRenderPipelines.additiveSprite(FLOOR_BEAM),
+		submitComposedScene(floorPose, collector, ChromaRenderPipelines.additiveSprite(FLOOR_BEAM),
 				(ignored, out) -> renderCompletedFloor(floorPose.last(), out, state));
 		PoseStack ringsPose = copy(poseStack);
-		submitAfterTerrain(ringsPose, collector, ChromaRenderPipelines.additiveSprite(RINGS),
+		submitComposedScene(ringsPose, collector, ChromaRenderPipelines.additiveSprite(RINGS),
 				(ignored, out) -> renderRings(ringsPose.last(), out, state));
 
 		// A transport beam must mean "ready". The V33a half-charge visual was misleading now that the
 		// modern portal gives an explicit rejection result, so expose it only at the usable threshold.
 		if (state.charge >= TileEntityCrystalPortal.MINCHARGE) {
 			PoseStack archPose = copy(poseStack);
-			submitAfterTerrain(archPose, collector, ChromaRenderPipelines.additiveSprite(ARCHES),
+			submitComposedScene(archPose, collector, ChromaRenderPipelines.additiveSprite(ARCHES),
 					(ignored, out) -> renderArches(archPose.last(), out, state));
 		}
 	}
@@ -216,12 +216,12 @@ public final class RenderCrystalPortal implements
 		out.addVertex(pose, (float)x, (float)y, (float)z).setUv(u, v).setColor(color);
 	}
 
-	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+	private static void submitComposedScene(PoseStack poseStack, SubmitNodeCollector collector,
 			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
 		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 				poseStack.last().copy(), renderType, renderer);
 		collector.order(0)
-				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+				.submitSpecial(ScreenParticleRendering.PHASE, submit);
 	}
 
 	private static PoseStack copy(PoseStack source) {

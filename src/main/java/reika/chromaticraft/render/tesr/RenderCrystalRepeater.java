@@ -21,7 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
@@ -215,7 +215,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
         double stepY = 0.5 * radius / 16D;
         double pulse = 0.75 * Math.sin(state.ticks / 128D);
         PoseStack renderPose = copy(poseStack);
-        submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(RANGE),
+        submitComposedScene(poseStack, collector, ChromaRenderPipelines.additiveSprite(RANGE),
                 (pose, vertices) -> {
                     for (double y = -radius; y <= radius; y += stepY) {
                         double nextY = y + stepY;
@@ -246,7 +246,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
     private static void submitDashedLine(PoseStack poseStack, SubmitNodeCollector collector, Vec3 end, int alpha) {
         PoseStack renderPose = copy(poseStack);
         int color = (alpha << 24) | 0xffffff;
-        submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (pose, vertices) -> {
+        submitComposedScene(poseStack, collector, RenderTypes.linesTranslucent(), (pose, vertices) -> {
             double length = end.length();
             int segments = Math.max(1, (int)Math.ceil(length * 4));
             Vector3f normal = new Vector3f((float)end.x, (float)end.y, (float)end.z).normalize();
@@ -266,7 +266,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
         poseStack.translate(0.5, 0.5, 0.5);
         for (Beam beam : state.beams) {
             PoseStack renderPose = copy(poseStack);
-            submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.energyBeam(BEAM),
+            submitComposedScene(poseStack, collector, ChromaRenderPipelines.energyBeam(BEAM),
                     (pose, vertices) -> beamTube(renderPose.last(), vertices, beam, scroll));
         }
         poseStack.popPose();
@@ -316,7 +316,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
         TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.BLOCKS).getSprite(spriteId);
         PoseStack renderPose = copy(poseStack);
-        submitAfterTerrain(poseStack, collector,
+        submitComposedScene(poseStack, collector,
                 ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
                 (pose, vertices) -> quad(vertices, renderPose.last(), scale, z, color,
                         sprite.getU0(), sprite.getV1(), sprite.getU1(), sprite.getV0()));
@@ -325,7 +325,7 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
     private static void submitTexturedQuad(PoseStack poseStack, SubmitNodeCollector collector,
             Identifier texture, float scale, int color, float z, float u0, float v0, float u1, float v1) {
         PoseStack renderPose = copy(poseStack);
-        submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.additiveSprite(texture),
+        submitComposedScene(poseStack, collector, ChromaRenderPipelines.additiveSprite(texture),
                 (pose, vertices) -> quad(vertices, renderPose.last(), scale, z, color, u0, v1, u1, v0));
     }
 
@@ -354,15 +354,15 @@ public class RenderCrystalRepeater<T extends TileEntityCrystalRepeater>
         return copy;
     }
 
-    private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+    private static void submitComposedScene(PoseStack poseStack, SubmitNodeCollector collector,
             RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
         CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
                 poseStack.last().copy(), renderType, renderer);
         collector.order(0)
-        // In 26.2 TRANSLUCENT_CUSTOM_GEOMETRY is drained before the translucent chunk layer;
-        // AFTER_TERRAIN is the actual post-water hook. Water is therefore already down and can
+        // In 26.3 TRANSLUCENT_CUSTOM_GEOMETRY is drained before the translucent chunk layer;
+        // The owned screen phase is post-water and post-OIT. Water is therefore already down and can
         // correctly occlude the glow, while the pipeline's depth still orders later compositing.
-                .submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+                .submitSpecial(ScreenParticleRendering.PHASE, submit);
     }
 
     @Override

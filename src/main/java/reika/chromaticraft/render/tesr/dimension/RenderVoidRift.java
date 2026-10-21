@@ -14,7 +14,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.registry.CrystalElement;
@@ -67,7 +67,7 @@ public final class RenderVoidRift implements
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector,
 			CameraRenderState camera) {
 		PoseStack auraPose = copy(poseStack);
-		submitAfterTerrain(auraPose, collector, ChromaRenderPipelines.additiveSprite(AURA),
+		submitComposedScene(auraPose, collector, ChromaRenderPipelines.additiveSprite(AURA),
 				(ignored, out) -> renderAura(auraPose.last(), out, state));
 	}
 
@@ -169,12 +169,12 @@ public final class RenderVoidRift implements
 		out.addVertex(pose, (float)x, (float)y, (float)z).setUv(u, v).setColor(color);
 	}
 
-	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+	private static void submitComposedScene(PoseStack poseStack, SubmitNodeCollector collector,
 			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
 		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 				poseStack.last().copy(), renderType, renderer);
 		collector.order(0)
-				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+				.submitSpecial(ScreenParticleRendering.PHASE, submit);
 	}
 
 	private static PoseStack copy(PoseStack source) {

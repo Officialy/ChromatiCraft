@@ -15,7 +15,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
 import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import reika.chromaticraft.ChromatiCraft;
@@ -107,7 +107,7 @@ public final class LuminousCliffsFogRenderer {
 		event.getRenderState().setRenderData(FOG, clouds.stream().map(Cloud::snapshot).toList());
 	}
 
-	/** Submit into the world's translucent pass, before Iris composites its G-buffers. */
+	/** Submit into the native forward world phase after vanilla OIT composition. */
 	@SubscribeEvent
 	public static void submit(SubmitCustomGeometryEvent event) {
 		if (IrisCompatibility.shadowPass()) return;
@@ -121,7 +121,7 @@ public final class LuminousCliffsFogRenderer {
 					for (var frame : frames) frame.render(pose, vertices, rotation, camera);
 				});
 		event.getSubmitNodeCollector().order(1)
-				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, geometry);
+				.submitSpecial(ScreenParticleRendering.PHASE, geometry);
 	}
 
 	/** V33a {@code createCloud}. */

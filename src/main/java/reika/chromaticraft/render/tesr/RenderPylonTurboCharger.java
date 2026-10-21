@@ -20,7 +20,7 @@ import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.submit.RenderPhaseKeys;
+import reika.dragonapi.client.ScreenParticleRendering;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 import reika.chromaticraft.ChromatiCraft;
@@ -116,7 +116,7 @@ public final class RenderPylonTurboCharger
 		Vec3[][] paths = new Vec3[lightning.length][];
 		for (int bolt = 0; bolt < paths.length; bolt++)
 			paths[bolt] = lightning[bolt][state.locationIndex].update(state.lightningEnd);
-		submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
+		submitComposedScene(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
 			Vector3f normal = new Vector3f((float)state.lightningEnd.x,
 					(float)state.lightningEnd.y, (float)state.lightningEnd.z).normalize();
 			for (Vec3[] path : paths) {
@@ -126,7 +126,7 @@ public final class RenderPylonTurboCharger
 				}
 			}
 		});
-		submitAfterTerrain(poseStack, collector,
+		submitComposedScene(poseStack, collector,
 				ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS), (unused, vertices) -> {
 			for (Vec3[] path : paths)
 				for (int segment = 1; segment < path.length; segment++)
@@ -141,7 +141,7 @@ public final class RenderPylonTurboCharger
 		PoseStack renderPose = copy(poseStack);
 		float scroll = (float)((state.time / 30D) % 12D);
 		int color = 0xff000000 | state.color;
-		submitAfterTerrain(poseStack, collector, ChromaRenderPipelines.energyBeam(BEAM),
+		submitComposedScene(poseStack, collector, ChromaRenderPipelines.energyBeam(BEAM),
 				(unused, vertices) -> beamTube(renderPose.last(), vertices, 512, 0.35F, scroll, color));
 		poseStack.popPose();
 	}
@@ -166,12 +166,12 @@ public final class RenderPylonTurboCharger
 			Vec3 end, int color, float width) {
 		PoseStack renderPose = copy(poseStack);
 		TextureAtlasSprite laser = laserSprite();
-		submitAfterTerrain(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
+		submitComposedScene(poseStack, collector, RenderTypes.linesTranslucent(), (unused, vertices) -> {
 			Vector3f normal = new Vector3f((float)end.x, (float)end.y, (float)end.z).normalize();
 			lineVertex(vertices, renderPose.last(), Vec3.ZERO, normal, color, 2F);
 			lineVertex(vertices, renderPose.last(), end, normal, color, 2F);
 		});
-		submitAfterTerrain(poseStack, collector,
+		submitComposedScene(poseStack, collector,
 				ChromaRenderPipelines.additiveSprite(TextureAtlas.LOCATION_BLOCKS),
 				(unused, vertices) -> beamSegment(renderPose.last(), vertices, laser,
 						Vec3.ZERO, end, width / 6F, color));
@@ -224,12 +224,12 @@ public final class RenderPylonTurboCharger
 		return copy;
 	}
 
-	private static void submitAfterTerrain(PoseStack poseStack, SubmitNodeCollector collector,
+	private static void submitComposedScene(PoseStack poseStack, SubmitNodeCollector collector,
 			RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
 		CustomFeatureRenderer.Submit submit = new CustomFeatureRenderer.Submit(
 				poseStack.last().copy(), renderType, renderer);
 		collector.order(0)
-				.submitSpecial(RenderPhaseKeys.AFTER_TERRAIN, submit);
+				.submitSpecial(ScreenParticleRendering.PHASE, submit);
 	}
 
 	@Override
