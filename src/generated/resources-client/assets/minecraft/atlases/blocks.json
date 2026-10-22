@@ -6,6 +6,10 @@
       "source": "block/icons"
     },
     {
+      "type": "minecraft:single",
+      "resource": "chromaticraft:entity/colored_altar"
+    },
+    {
       "type": "chromaticraft:legacy_glow",
       "resource": "chromaticraft:block/icons/roundflare",
       "sprite": "chromaticraft:block/icons/roundflare_alpha"

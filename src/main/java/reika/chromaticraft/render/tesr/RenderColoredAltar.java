@@ -14,6 +14,12 @@ import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import reika.dragonapi.client.EntityLighting;
+import reika.dragonapi.client.ScreenParticleRendering;
+import reika.dragonapi.client.SolidModelRendering;
+import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
@@ -46,6 +52,7 @@ public final class RenderColoredAltar implements BlockEntityRenderer<TileEntityC
     private static final EnumMap<CrystalElement,ColorBlendList[]> COLORS=new EnumMap<>(CrystalElement.class);
     private static final EnumMap<CrystalElement,List<Orbit>> ORBITS=new EnumMap<>(CrystalElement.class);
     private static final TruncatedCube CUBE=new TruncatedCube(.03125,.03125*1.875);
+    private static final List<TruncatedCube.Surface> SURFACES=CUBE.surfaces(0,0,0);
     private final ModelColoredAltar model;
     static {
         Random random=new Random();
@@ -61,14 +68,26 @@ public final class RenderColoredAltar implements BlockEntityRenderer<TileEntityC
         int[] result=new int[24]; for (int i=0;i<24;i++) result[i]=COLORS.get(color)[i].getColor(time); return result;
     }
     public RenderColoredAltar(BlockEntityRendererProvider.Context context) { model=new ModelColoredAltar(context.bakeLayer(MODEL_LAYER)); }
-    @Override public net.minecraft.world.phys.AABB getRenderBoundingBox(TileEntityColoredAltar tile) { var pos=tile.getBlockPos(); return new net.minecraft.world.phys.AABB(pos.getX()-.5,pos.getY(),pos.getZ()-.5,pos.getX()+1.5,pos.getY()+3,pos.getZ()+1.5); }
+    @Override public net.minecraft.world.phys.AABB getRenderBoundingBox(TileEntityColoredAltar tile) {
+        var pos=tile.getBlockPos();double radius=.75*1.4+Math.sqrt(3)*CUBE.mainSize;
+        return new net.minecraft.world.phys.AABB(pos.getX()+.5-radius,pos.getY(),pos.getZ()+.5-radius,
+            pos.getX()+.5+radius,pos.getY()+Math.max(1,1.25+radius),pos.getZ()+.5+radius);
+    }
     public State createRenderState() { return new State(); }
     @Override public void extractRenderState(TileEntityColoredAltar tile,State state,float partial,Vec3 camera,ModelFeatureRenderer.@Nullable CrumblingOverlay breaking) {
         BlockEntityRenderer.super.extractRenderState(tile,state,partial,camera,breaking);
         state.color=tile.getColor(); double tick=tile.getRenderTick()+partial;
         for (int i=0;i<24;i++) state.crystals[i]=COLORS.get(state.color)[i].getColor(tick);
-        int setting=Minecraft.getInstance().options.particles().get().ordinal();
-        float distance=(float)camera.distanceTo(Vec3.atCenterOf(tile.getBlockPos())); state.distance=distance;
+        var mc=Minecraft.getInstance();state.inWorld=tile.getLevel()!=null;state.preview=StructureRenderer.isRenderingTiles();
+        double distanceSquared=mc.player==null?Double.POSITIVE_INFINITY:mc.player.position().distanceToSqr(Vec3.atCenterOf(tile.getBlockPos()));
+        float distance=(float)Math.sqrt(distanceSquared);state.distance=distance;state.cubes=List.of();
+        state.metalMask=ModelColoredAltar.ALL_METAL;state.crystalMask=ModelColoredAltar.ALL_CRYSTALS;
+        if(state.inWorld&&!state.preview) {
+            boolean control=(org.lwjgl.sdl.SDLKeyboard.SDL_GetModState()&net.minecraft.client.input.InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER)!=0;
+            var visible=model.visibility(distanceSquared,mc.options.renderDistance().get(),control);state.metalMask=visible.metal();state.crystalMask=visible.crystals();
+        }
+        if(!state.inWorld||state.preview)return;
+        int setting=mc.options.particles().get().ordinal();
         double step=4*(1+setting/2D); if (distance>8) step=Math.min(12,step*2); if (distance>16) step=Math.min(16,step*2);
         List<Cube> cubes=new ArrayList<>();
         for (int i=0;i<12/(1+setting);i++) {
@@ -86,24 +105,46 @@ public final class RenderColoredAltar implements BlockEntityRenderer<TileEntityC
         state.cubes=List.copyOf(cubes);
     }
     @Override public void submit(State state,PoseStack stack,SubmitNodeCollector collector,CameraRenderState camera) {
-        stack.pushPose(); stack.translate(.5,1.5,.5); stack.scale(1,-1,-1);
-        var captured=new PoseStack(); captured.last().set(stack.last()); int light=state.lightCoords; int[] colors=state.crystals.clone();
-        collector.submitCustomGeometry(stack,RenderTypes.entitySolid(TEXTURE),(pose,out)->model.renderMetal(captured,out,light,OverlayTexture.NO_OVERLAY));
-        collector.submitCustomGeometry(stack,RenderTypes.entityTranslucent(TEXTURE),(pose,out)->model.renderCrystals(captured,out,colors,OverlayTexture.NO_OVERLAY));
+        stack.pushPose();modelTransform(stack);
+        var captured=new PoseStack();captured.last().set(stack.last());int light=state.lightCoords;int[] colors=state.crystals.clone();
+        long metalMask=state.metalMask,crystalMask=state.crystalMask;
+        var metalType=EntityLighting.LIGHTMAP_ONLY.alphaModel(TEXTURE,true,true);
+        SubmitNodeCollector.CustomGeometryRenderer metal=(pose,out)->model.renderMetal(captured,out,light,OverlayTexture.NO_OVERLAY,metalMask);
+        if(metalMask!=0) {
+            if(state.inWorld&&!state.preview)SolidModelRendering.submitGeometry(collector,stack,metalType,metal);
+            else collector.order(0).submitCustomGeometry(stack,metalType,metal);
+        }
+        var crystalType=EntityLighting.LIGHTMAP_ONLY.alphaModel(TEXTURE,false,!state.inWorld||state.preview);
+        if(crystalMask!=0)submitAlpha(state,stack,collector,1,crystalType,(pose,out)->model.renderCrystals(captured,out,colors,light,OverlayTexture.NO_OVERLAY,crystalMask));
         stack.popPose();
         int base=ReikaColorAPI.mixColors(0xffffff,state.color.color(),.125F),edge=ReikaColorAPI.mixColors(0xffffff,state.color.color(),.375F)|150<<24;
-        float distance=state.distance;
-        for (Cube cube:state.cubes) {
-            stack.pushPose(); stack.translate(cube.point.x,cube.point.y,cube.point.z);
-            stack.rotate(Axis.XP.rotationDegrees(cube.x)); stack.rotate(Axis.YP.rotationDegrees(cube.y)); stack.rotate(Axis.ZP.rotationDegrees(cube.z));
-            int fill=base|(int)(190*(1+cube.tail/24))<<24;
-            collector.submitCustomGeometry(stack,ChromaRenderPipelines.translucentColorTriangles(),(pose,out)->CUBE.renderFaces(pose,out,0,0,0,fill));
-            if (cube.tail==0) collector.submitCustomGeometry(stack,ChromaRenderPipelines.translucentColorLines(),(pose,out)->CUBE.renderEdges(pose,out,0,0,0,edge,distance));
+        float distance=state.distance;int order=2;
+        for(Cube cube:state.cubes) {
+            stack.pushPose();stack.translate(cube.point.x,cube.point.y,cube.point.z);
+            stack.rotate(Axis.XP.rotationDegrees(cube.x));stack.rotate(Axis.YP.rotationDegrees(cube.y));stack.rotate(Axis.ZP.rotationDegrees(cube.z));
+            var pose=stack.last().copy();int fill=base|(int)(190*(1+cube.tail/24))<<24;
+            if(cube.tail==0) {
+                // Ordinary alpha is order-dependent: V33a pairs every face/corner fill with its outline.
+                for(var surface:SURFACES) {
+                    submitAlpha(state,stack,collector,order++,ChromaRenderPipelines.LIGHTMAPPED_ALPHA_TRIANGLES_TYPE,
+                        (ignored,out)->TruncatedCube.renderSurfaceFaces(pose,out,surface,fill,240));
+                    submitAlpha(state,stack,collector,order++,ChromaRenderPipelines.LIGHTMAPPED_ALPHA_LINES_TYPE,
+                        (ignored,out)->TruncatedCube.renderSurfaceEdges(pose,out,surface,edge,distance,240));
+                }
+            } else submitAlpha(state,stack,collector,order++,ChromaRenderPipelines.LIGHTMAPPED_ALPHA_TRIANGLES_TYPE,
+                (ignored,out)->CUBE.renderFaces(pose,out,0,0,0,fill,240));
             stack.popPose();
         }
     }
+    public static void modelTransform(PoseStack stack) {stack.translate(.5,1.5,.5);stack.scale(1,-1,-1);}
+    private static void submitAlpha(State state,PoseStack stack,SubmitNodeCollector collector,int order,RenderType type,
+            SubmitNodeCollector.CustomGeometryRenderer geometry) {
+        if(state.inWorld&&!state.preview)collector.order(order).submitSpecial(ScreenParticleRendering.PHASE,new CustomFeatureRenderer.Submit(stack.last().copy(),type,geometry));
+        else collector.order(order).submitCustomGeometry(stack,type,geometry);
+    }
     private record Cube(Vec3 point,float x,float y,float z,double tail) {}
     public static final class State extends BlockEntityRenderState {
-        CrystalElement color=CrystalElement.WHITE; final int[] crystals=new int[24]; List<Cube> cubes=List.of(); float distance;
+        CrystalElement color=CrystalElement.WHITE;final int[] crystals=new int[24];List<Cube> cubes=List.of();float distance;
+        boolean inWorld,preview;long metalMask=ModelColoredAltar.ALL_METAL,crystalMask=ModelColoredAltar.ALL_CRYSTALS;
     }
 }

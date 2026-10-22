@@ -19,6 +19,8 @@ public final class ChromaSpriteSourceProvider extends SpriteSourceProvider {
 
     @Override protected void gather() {
         var blocks = atlas(AtlasIds.BLOCKS).addSource(new DirectoryLister("block/icons", "block/icons/"));
+        blocks.addSource(new net.minecraft.client.renderer.texture.atlas.sources.SingleFile(
+                Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"entity/colored_altar")));
         for (String name : new String[] {"roundflare", "sunflare", "turbo"}) {
             blocks.addSource(new LegacyGlowSpriteSource(icon(name), icon(name+"_alpha"), false));
         }

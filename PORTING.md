@@ -11944,3 +11944,52 @@ with an annex. javap inspection of the current compiled controller confirms
 the door OPEN and furnace entrance checks and successful true return once
 both pass. No additional gate change or save repair is needed; relaunching
 with the updated build is required. No world files were changed.
+
+
+## 2026-10-22 - D06 Colored Altar source context and Farmer pass-0 ownership
+
+Compared the original altar renderer, 45-part Techne model, item helper,
+LODModelPart, Orbit and TruncatedCube. Restored per-part pixel-volume distance
+culling and edit-shortcut override; player-distance trail thresholds; inherited
+model/crystal lightmap; no alpha cutout; native source pass-0 metal with depth
+writes and ordered ordinary-alpha pass-1 crystals/cubes. Retained whole render
+orbit ticks, partial-tick color/motion, and once-per-extraction rotation updates.
+Preserved the far-step source loop without adding a missing head. Cube heads
+interleave fill/outline for each of six faces and eight corners. The first
+native audit caught the existing opaque adjacency outline pipeline; the altar
+now owns a distinct ordinary-alpha lightmapped outline pipeline. Existing
+adjacency materials retain their behavior.
+
+Items retain the source shared fixed random time offset and authored transforms;
+bounds derive from transformed model vertices. World bounds cover source orbit
+excursion and rotated cube radius. The missing altar particle sprite is now
+stitched from its existing entity texture via atlas datagen. DragonAPI exposes
+independent ordinary-alpha model depth/shadow intent and immutable cube surfaces.
+Farmer's registry is source pass 0: moved its depth-writing screen glow into the
+native solid phase at order 1 after the body. Four facings/item and native
+classic/improved queue checks pass. Contracts: ChromatiCraft/docs/colored-altar-
+rendering.md and docs/farmer-rendering.md.
+
+The independent standalone Java source oracle reproduces its 348892-byte fixture.
+Native mesh checks passed 210 LOD boundaries, 90 real player-distance/particle/
+render-tick/partial extractions, source cube vertices/colors/light/line widths,
+rotation timing, native classic/improved phase ownership, and all 16 item colors
+and 45 authored part coordinates. Six real placed-altar particle-setting/native
+transparency scenes completed all model/crystal/cube GPU callbacks. This does
+not establish framebuffer pixel/shader-pack, dedicated-server or altar discharge/
+collapse gameplay acceptance. The full audit also retained earlier renderer,
+water composition and integrated shutdown checks.
+
+Full isolated BUILD SUCCESSFUL in 5m 49s. Proof: build/d06-colored-altar-proof.json;
+evidence: build\d06-colored-altar-evidence\4ebbb562-c142-48f3-95c1-6e878baf48e6. Independently reproduced 3429 accepted
+source fingerprints / 5219 isolated class hashes. Selected tested
+classes, fixture/texture and generated atlas match the immutable runtime snapshot.
+Play argument hashes unchanged; retired lighting helper bytecode references zero.
+The initial outline-material failure is retained with the acceptance evidence.
+
+D06 remains open; no checklist completion changes. The inherited, unused physical-
+time Orbit overload is recursive and remains a separate follow-up. Reviewed active
+Orbit callers use the four-argument visual-angle method; preserve that contract
+when implementing the physical-time method. Concurrent crop, machine and module-
+ledger work is preserved. Publish this reviewed checkpoint per the user's request,
+including the previous local source trap/Fluid Relay checkpoint.

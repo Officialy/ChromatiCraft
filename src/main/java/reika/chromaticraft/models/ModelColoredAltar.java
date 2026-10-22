@@ -24,14 +24,37 @@ import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 
 public final class ModelColoredAltar {
+    public static final long ALL_METAL=(1L<<21)-1,ALL_CRYSTALS=(1L<<24)-1;
+    private static final String[] METAL={"Shape1","Shape1a","Shape1b","Shape2","Shape3","Shape4","Shape4a","Shape4b","Shape4c","Shape4d","Shape4e","Shape3b","Shape3a","Shape2a","Shape2b","Shape5","Shape5b","Shape5c","Shape5d","Shape5e","Shape5f"};
     private final ModelPart root;
-    public ModelColoredAltar(ModelPart root) { this.root=root; }
-    public void renderMetal(PoseStack stack,VertexConsumer out,int light,int overlay) {
-        for (String part:new String[]{"Shape1","Shape1a","Shape1b","Shape2","Shape3","Shape4","Shape4a","Shape4b","Shape4c","Shape4d","Shape4e","Shape3b","Shape3a","Shape2a","Shape2b","Shape5","Shape5b","Shape5c","Shape5d","Shape5e","Shape5f"}) root.getChild(part).render(stack,out,light,overlay);
+    private final double[] metalRanges=new double[21],crystalRanges=new double[24];
+    public ModelColoredAltar(ModelPart root) {
+        this.root=root;var volumes=new java.util.HashMap<String,Float>();
+        root.visit(new PoseStack(),(pose,path,index,cube)->volumes.put(path.substring(path.lastIndexOf('/')+1),
+            Math.abs((cube.maxX-cube.minX)*(cube.maxY-cube.minY)*(cube.maxZ-cube.minZ))));
+        for(int i=0;i<21;i++)metalRanges[i]=sourceRange(volumes.get(METAL[i]));
+        for(int i=0;i<24;i++)crystalRanges[i]=sourceRange(volumes.get(crystalName(i)));
     }
-    public void renderCrystals(PoseStack stack,VertexConsumer out,int[] colors,int overlay) {
-        for (int i=0;i<24;i++) root.getChild(i==0?"Shape6":"Shape6"+(char)('a'+i-1)).render(stack,out,0xF000F0,overlay,colors[i]);
+    public static double sourceRange(float volume) {
+        return volume>1024?16384:volume>512?4096:volume>128?2048:volume>32?1024:volume>8?256:volume>4?128:volume>0?96:0;
     }
+    public record Visibility(long metal,long crystals) {}
+    public Visibility visibility(double distanceSquared,int chunks,boolean control) {
+        double multiplier=chunks>8?2:chunks>4?1:chunks>2?.75:.4;
+        long metal=0,crystals=0;
+        for(int i=0;i<21;i++)if(control||metalRanges[i]*multiplier>=distanceSquared)metal|=1L<<i;
+        for(int i=0;i<24;i++)if(control||crystalRanges[i]*multiplier>=distanceSquared)crystals|=1L<<i;
+        return new Visibility(metal,crystals);
+    }
+    public void renderMetal(PoseStack stack,VertexConsumer out,int light,int overlay) {renderMetal(stack,out,light,overlay,ALL_METAL);}
+    public void renderMetal(PoseStack stack,VertexConsumer out,int light,int overlay,long mask) {
+        for(int i=0;i<21;i++)if((mask&(1L<<i))!=0)root.getChild(METAL[i]).render(stack,out,light,overlay);
+    }
+    private static String crystalName(int i) {return i==0?"Shape6":"Shape6"+(char)('a'+i-1);}
+    public void renderCrystals(PoseStack stack,VertexConsumer out,int[] colors,int light,int overlay,long mask) {
+        for(int i=0;i<24;i++)if((mask&(1L<<i))!=0)root.getChild(crystalName(i)).render(stack,out,light,overlay,colors[i]);
+    }
+    public void getExtents(PoseStack stack,java.util.function.Consumer<org.joml.Vector3fc> out) {root.getExtentsForGui(stack,out);}
     public static LayerDefinition createBodyLayer() {
         var mesh=new MeshDefinition(); var root=mesh.getRoot();
         root.addOrReplaceChild("Shape1",CubeListBuilder.create().texOffs(0,25).mirror().addBox(0F, 0F, 0F, 6, 1, 6),PartPose.offsetAndRotation(-3F, 21F, -3F, 0F, 0F, 0F));

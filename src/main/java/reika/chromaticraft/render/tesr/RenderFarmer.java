@@ -33,7 +33,7 @@ import reika.chromaticraft.ChromatiCraft;
 import reika.chromaticraft.models.ModelFarmer;
 import reika.chromaticraft.registry.CrystalElement;
 import reika.dragonapi.client.EntityLighting;
-import reika.dragonapi.client.ScreenParticleRendering;
+import reika.dragonapi.client.SolidModelRendering;
 import reika.chromaticraft.tileentity.TileEntityFarmer;
 
 public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer, RenderFarmer.State> {
@@ -83,7 +83,7 @@ public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer,
                 (unused, output) -> model.render(body, output, light, OverlayTexture.NO_OVERLAY));
         PoseStack effects = copy(pose);
         // V33a Farmer renders only in pass 0: retain depth writes and block-light 15/sky-light 0.
-        // Screen blending belongs on composed world color, while item draws retain their collector.
+        // The source pass-0 blend executes before world transparency; item draws retain their collector.
         var type = EntityLighting.LIGHTMAP_ONLY.screen(TextureAtlas.LOCATION_BLOCKS, false, true);
         var fire = sprite("bluefire");
         var halo = sprite("rift_halo");
@@ -91,7 +91,7 @@ public final class RenderFarmer implements BlockEntityRenderer<TileEntityFarmer,
         PoseStack.Pose effectPose = effects.last().copy();
         SubmitNodeCollector.CustomGeometryRenderer draw =
                 (unused, output) -> renderEffects(effectPose, output, fire, halo, sparkle);
-        if (world) ScreenParticleRendering.submitGeometry(collector, effects, type, draw);
+        if (world) SolidModelRendering.submitGeometry(collector, effects, 1, type, draw);
         else collector.submitCustomGeometry(effects, type, draw);
     }
 

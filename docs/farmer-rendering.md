@@ -13,8 +13,8 @@ lightmap without directional lighting and preserves source RGB screen blending.
 
 TileEntityChromaticBase.shouldRenderInPass delegates to ChromaTiles.renderInPass1;
 FARMER is absent from that registry switch. Its glow therefore belongs to pass 0
-and retains depth writes. World draws use ScreenParticleRendering's composed-scene
-forward phase. The shared item helper retains ordinary item collector ownership
+and retains depth writes. World draws use SolidModelRendering's native solid phase, at order 1 after
+the body at order 0 and before world transparency. The shared item helper retains ordinary item collector ownership
 and depth writes. Deferred draws capture the pose and sprite references before
 submission rather than looking up a later atlas during callback execution.
 

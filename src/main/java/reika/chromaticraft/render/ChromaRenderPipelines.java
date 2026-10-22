@@ -132,6 +132,17 @@ public final class ChromaRenderPipelines {
     public static final RenderType LIGHTMAPPED_SCREEN_LINES_TYPE=RenderType.create("chromaticraft_lightmapped_screen_lines",
             RenderSetup.builder(LIGHTMAPPED_SCREEN_LINES).useLightmap().createRenderSetup());
 
+    public static final RenderPipeline LIGHTMAPPED_ALPHA_TRIANGLES=LIGHTMAPPED_SCREEN_TRIANGLES.toBuilder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/lightmapped_alpha_triangles"))
+            .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT)).build();
+    public static final RenderType LIGHTMAPPED_ALPHA_TRIANGLES_TYPE=RenderType.create("chromaticraft_lightmapped_alpha_triangles",
+            RenderSetup.builder(LIGHTMAPPED_ALPHA_TRIANGLES).useLightmap().createRenderSetup());
+    public static final RenderPipeline LIGHTMAPPED_ALPHA_LINES=ADJACENCY_LINES.toBuilder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/lightmapped_alpha_lines"))
+            .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT)).build();
+    public static final RenderType LIGHTMAPPED_ALPHA_LINES_TYPE=RenderType.create("chromaticraft_lightmapped_alpha_lines",
+            RenderSetup.builder(LIGHTMAPPED_ALPHA_LINES).useLightmap().createRenderSetup());
+
     public static final RenderPipeline ADDITIVE_LINES = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/additive_lines"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -742,6 +753,10 @@ public final class ChromaRenderPipelines {
         event.registerPipeline(ADDITIVE_COLOR);
         event.registerPipeline(ADDITIVE_LINES);
         event.registerPipeline(LIGHTMAPPED_SCREEN_TRIANGLES);
+        event.registerPipeline(LIGHTMAPPED_ALPHA_LINES);
+        IrisCompat.assignWithoutShadow(LIGHTMAPPED_ALPHA_LINES,"LINES");
+        event.registerPipeline(LIGHTMAPPED_ALPHA_TRIANGLES);
+        IrisCompat.assignWithoutShadow(LIGHTMAPPED_ALPHA_TRIANGLES,"BASIC");
         event.registerPipeline(LIGHTMAPPED_SCREEN_LINES);
         IrisCompat.assignWithoutShadow(LIGHTMAPPED_SCREEN_TRIANGLES,"BASIC");
         IrisCompat.assignWithoutShadow(LIGHTMAPPED_SCREEN_LINES,"LINES");
