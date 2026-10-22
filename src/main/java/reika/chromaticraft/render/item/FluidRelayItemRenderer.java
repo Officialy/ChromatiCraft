@@ -31,20 +31,13 @@ public final class FluidRelayItemRenderer implements NoDataSpecialModelRenderer 
 	@Override
 	public void submit(PoseStack poseStack, SubmitNodeCollector collector, int lightCoords, int overlayCoords,
 			boolean hasFoil, int outlineColor) {
-		poseStack.pushPose();
-		float s = 3F;
-		// V33a scaled about the render origin; centred here on the block's footprint.
-		poseStack.translate(0.5F, 0, 0.5F);
-		poseStack.scale(s, s, s);
-		poseStack.translate(-0.5F, 0.3125F, -0.5F);
-		RenderFluidRelay.submitModel(model, poseStack, collector, lightCoords);
-		poseStack.popPose();
+        RenderFluidRelay.submitItemModel(model,poseStack,collector,lightCoords);
 	}
 
 	@Override
 	public void getExtents(Consumer<Vector3fc> output) {
-		output.accept(new Vector3f(0, 0, 0));
-		output.accept(new Vector3f(1, 1, 1));
+		var pose=new PoseStack();RenderFluidRelay.itemTransform(pose);
+        pose.translate(.5F,1.5F,.5F);pose.scale(1,-1,-1);model.getExtents(pose,output);
 	}
 
 	public record Unbaked() implements NoDataSpecialModelRenderer.Unbaked {

@@ -108,6 +108,30 @@ public final class ChromaRenderPipelines {
     public static final RenderType ADJACENCY_LINES_TYPE=RenderType.create("chromaticraft_adjacency_lines",
             RenderSetup.builder(ADJACENCY_LINES).useLightmap().createRenderSetup());
 
+    /** Untextured V33a screen geometry retains UV2 lightmap sampling and disables directional lighting. */
+    public static final com.mojang.renderpearl.api.vertex.VertexFormat LIGHTMAPPED_COLOR_FORMAT =
+            com.mojang.renderpearl.api.vertex.VertexFormat.builder(0)
+                .addAttribute("Position",com.mojang.renderpearl.api.GpuFormat.RGB32_FLOAT)
+                .addAttribute("Color",com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM)
+                .addAttribute("UV2",com.mojang.renderpearl.api.GpuFormat.RG16_SINT).build();
+    public static final RenderPipeline LIGHTMAPPED_SCREEN_TRIANGLES = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/lightmapped_screen_triangles"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS).withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS).withBindGroupLayout(BindGroupLayouts.FOG)
+            .withBindGroupLayout(BindGroupLayouts.SAMPLER2)
+            .withVertexShader(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"core/position_color_lightmap"))
+            .withFragmentShader("core/rendertype_lines")
+            .withColorTargetState(new ColorTargetState(ADDITIVE_DARK))
+            .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,false))
+            .withVertexBinding(0,LIGHTMAPPED_COLOR_FORMAT).withPrimitiveTopology(PrimitiveTopology.TRIANGLES).withCull(false).build();
+    public static final RenderType LIGHTMAPPED_SCREEN_TRIANGLES_TYPE=RenderType.create("chromaticraft_lightmapped_screen_triangles",
+            RenderSetup.builder(LIGHTMAPPED_SCREEN_TRIANGLES).useLightmap().createRenderSetup());
+    public static final RenderPipeline LIGHTMAPPED_SCREEN_LINES=ADJACENCY_LINES.toBuilder()
+            .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/lightmapped_screen_lines"))
+            .withColorTargetState(new ColorTargetState(ADDITIVE_DARK)).build();
+    public static final RenderType LIGHTMAPPED_SCREEN_LINES_TYPE=RenderType.create("chromaticraft_lightmapped_screen_lines",
+            RenderSetup.builder(LIGHTMAPPED_SCREEN_LINES).useLightmap().createRenderSetup());
+
     public static final RenderPipeline ADDITIVE_LINES = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(ChromatiCraft.MODID,"pipeline/additive_lines"))
             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
@@ -717,6 +741,10 @@ public final class ChromaRenderPipelines {
         IrisCompat.assignShadow(SOURCE_EDGES,"SHADOW_ENTITIES");
         event.registerPipeline(ADDITIVE_COLOR);
         event.registerPipeline(ADDITIVE_LINES);
+        event.registerPipeline(LIGHTMAPPED_SCREEN_TRIANGLES);
+        event.registerPipeline(LIGHTMAPPED_SCREEN_LINES);
+        IrisCompat.assignWithoutShadow(LIGHTMAPPED_SCREEN_TRIANGLES,"BASIC");
+        IrisCompat.assignWithoutShadow(LIGHTMAPPED_SCREEN_LINES,"LINES");
         event.registerPipeline(ADJACENCY_LINES);
         event.registerPipeline(ADJACENCY_ITEM_LINES);
         IrisCompat.assignWithoutShadow(ADJACENCY_ITEM_LINES,"LINES");

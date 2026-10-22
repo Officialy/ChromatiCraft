@@ -38,6 +38,8 @@ public final class ModelFluidRelay {
 		root.render(pose, vertices, light, overlay);
 	}
 
+	public void getExtents(PoseStack pose,java.util.function.Consumer<org.joml.Vector3fc> output) {root.getExtentsForGui(pose,output);}
+
 	public static LayerDefinition createBodyLayer() {
 		MeshDefinition mesh = new MeshDefinition();
 		PartDefinition root = mesh.getRoot();

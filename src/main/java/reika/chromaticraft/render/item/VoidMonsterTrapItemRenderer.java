@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 public final class VoidMonsterTrapItemRenderer implements NoDataSpecialModelRenderer {
     public static final Identifier ID=Identifier.fromNamespaceAndPath("chromaticraft","void_monster_trap");
     public void submit(PoseStack stack,SubmitNodeCollector collector,int light,int overlay,boolean foil,int outline) {
-        var state=new RenderVoidMonsterTrap.State(); state.preview=true; state.time=System.currentTimeMillis()/50D;
+        var state=new RenderVoidMonsterTrap.State(); state.preview=true; state.millis=System.currentTimeMillis(); state.time=state.millis/50D;
         RenderVoidMonsterTrap.drawInner(state,stack,collector,null);
     }
     public void getExtents(Consumer<Vector3fc> output) { output.accept(new Vector3f(0,0,0)); output.accept(new Vector3f(1,1,1)); }

@@ -14,6 +14,10 @@ import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import reika.dragonapi.client.ScreenParticleRendering;
+import reika.dragonapi.instantiable.rendering.structure.StructureRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
@@ -82,10 +86,13 @@ public final class RenderFluidRelay implements BlockEntityRenderer<TileEntityFlu
 		state.autoFilter = te.autoFilter;
 		state.ticks = te.getTicksExisted()+partialTick;
 		state.hash = System.identityHashCode(te);
+        state.millis=System.currentTimeMillis();state.inWorld=te.getLevel()!=null;state.preview=StructureRenderer.isRenderingTiles();
 		BlockPos pos = te.getBlockPos();
-		state.pdist = (float)cameraPosition.distanceTo(Vec3.atCenterOf(pos));
-		state.beams.clear();
-		if (te.getLevel() == null || te.getConnections().isEmpty())
+		var player=Minecraft.getInstance().player;
+        state.pdist = player==null?Float.POSITIVE_INFINITY:(float)player.position().distanceTo(Vec3.atCenterOf(pos));
+		state.beams=List.of();
+        var beams=new ArrayList<Beam>();
+		if (!state.inWorld || state.preview || te.getConnections().isEmpty())
 			return;
 		long time = te.getLevel().getGameTime();
 		if (connectionAlphaTick != time || connectionAlphaPTick != partialTick) {
@@ -113,9 +120,10 @@ public final class RenderFluidRelay implements BlockEntityRenderer<TileEntityFlu
 				Vec3 start = new Vec3(0.5+d*f1.getStepX(), 0.5+d*f1.getStepY(), 0.5+d*f1.getStepZ());
 				Vec3 end = new Vec3(c.getX()-pos.getX()+0.5+d*f2.getStepX(), c.getY()-pos.getY()+0.5+d*f2.getStepY(),
 						c.getZ()-pos.getZ()+0.5+d*f2.getStepZ());
-				state.beams.add(new Beam(start, end, Math.min(255, a)));
+				beams.add(new Beam(start, end, Math.min(255, a)));
 			}
 		}
+        state.beams=List.copyOf(beams);
 	}
 
 	/** V33a {@code HoldingChecks.MANIPULATOR.isClientHolding()} or holding an anchor. */
@@ -129,6 +137,7 @@ public final class RenderFluidRelay implements BlockEntityRenderer<TileEntityFlu
 
 	@Override
 	public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		if(!state.inWorld){submitItemModel(model,poseStack,collector,state.lightCoords);return;}
 		poseStack.pushPose();
 		switch(state.facing) {
 			case NORTH -> {
@@ -159,12 +168,12 @@ public final class RenderFluidRelay implements BlockEntityRenderer<TileEntityFlu
 		int c2 = 0xffffffff;
 		if (state.autoFilter) {
 			int t = (int)((state.ticks*2.4)%360);
-			c1 = 0x90000000 | ReikaColorAPI.getModifiedHue(0xffa0a0, t) & 0xffffff;
+			c1 = 0x90000000 | ReikaColorAPI.getModifiedHue(0xffa0a0, t);
 		}
 		if (state.pdist <= 24) {
 			poseStack.pushPose();
 			poseStack.translate(0.5, 0.325, 0.5);
-			long ms = System.currentTimeMillis();
+			long ms = state.millis;
 			double ang = (ms/10D+state.hash)%360D;
 			poseStack.rotate(Axis.YP.rotationDegrees((float)ang));
 			double s = 0.625+0.25*Math.sin(ms/800D-state.hash)+0.1*Math.sin(ms/300D-state.hash);
@@ -174,18 +183,31 @@ public final class RenderFluidRelay implements BlockEntityRenderer<TileEntityFlu
 			int fc2 = c2;
 			float pdist = state.pdist;
 			// Faces in ADDITIVEDARK, the outline as lines; V33a drew both in the one additive pass.
-			collector.submitCustomGeometry(poseStack, ChromaRenderPipelines.additiveColorTriangles(),
-					(unused, v5) -> cube.renderFaces(pose, v5, 0, 0, 0, fc1));
-			collector.submitCustomGeometry(poseStack, RenderTypes.linesTranslucent(),
-					(unused, lines) -> cube.renderEdges(pose, lines, 0, 0, 0, fc2, pdist));
+			submitGlow(state,poseStack,collector,0,ChromaRenderPipelines.LIGHTMAPPED_SCREEN_TRIANGLES_TYPE,
+					(unused, v5) -> cube.renderFaces(pose, v5, 0, 0, 0, fc1,240));
+			submitGlow(state,poseStack,collector,1,ChromaRenderPipelines.LIGHTMAPPED_SCREEN_LINES_TYPE,
+					(unused, lines) -> cube.renderEdges(pose, lines, 0, 0, 0, fc2, pdist,240));
 			poseStack.popPose();
 		}
 		poseStack.popPose();
 
-		for (Beam b : state.beams)
-			ChromaBeam.submit(poseStack, collector, b.start, b.end, b.alpha, 0.1875, 0xffffff, 0xffffff);
+        int order=2;
+        for (Beam b:state.beams) {
+            ChromaBeam.submit(poseStack,collector,b.start,b.end,b.alpha,.1875,0xffffff,0xffffff,order,!state.preview);order+=2;
+        }
 	}
 
+    private static void submitGlow(State state,PoseStack stack,SubmitNodeCollector collector,int order,
+            RenderType type,SubmitNodeCollector.CustomGeometryRenderer geometry) {
+        if(!state.preview)collector.order(order).submitSpecial(ScreenParticleRendering.PHASE,new CustomFeatureRenderer.Submit(stack.last().copy(),type,geometry));
+        else collector.order(order).submitCustomGeometry(stack,type,geometry);
+    }
+    public static void itemTransform(PoseStack stack) {
+        stack.translate(.5F,0,.5F);stack.scale(3,3,3);stack.translate(-.5F,.3125F,-.5F);
+    }
+    public static void submitItemModel(ModelFluidRelay model,PoseStack stack,SubmitNodeCollector collector,int light) {
+        stack.pushPose();itemTransform(stack);submitModel(model,stack,collector,light);stack.popPose();
+    }
 	/** V33a {@code renderModel}: the model's origin at the block's top centre, flipped. */
 	public static void submitModel(ModelFluidRelay model, PoseStack poseStack, SubmitNodeCollector collector, int light) {
 		poseStack.pushPose();
@@ -212,7 +234,9 @@ public final class RenderFluidRelay implements BlockEntityRenderer<TileEntityFlu
 		private float ticks;
 		private int hash;
 		private float pdist;
-		private final List<Beam> beams = new ArrayList<>();
+		private List<Beam> beams = List.of();
+        private long millis;
+        private boolean inWorld,preview;
 	}
 
 }
